@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'dart:math' as math;
 
 void main() => runApp(const SplashScreenApp());
 
@@ -10,9 +9,9 @@ class SplashScreenApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: SplashScreen(),
+      home: const SplashScreen(),
     );
   }
 }
@@ -29,7 +28,6 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
   late Animation<double> _progressCyan;
   late Animation<double> _progressGreen;
   late Animation<double> _progressFade;
-  late AnimationController _dotOrbitController;
 
   late AnimationController _dotController;
 
@@ -57,22 +55,7 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
     _dotController =
         AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
           ..repeat(reverse: true);
-
-          _dotOrbitController = AnimationController(
-  vsync: this,
-  duration: const Duration(seconds: 3),
-);
-
-_startOrbitLoop();
-
   }
-
-Future<void> _startOrbitLoop() async {
-  while (mounted) {
-    await _dotOrbitController.forward(from: 0);
-    await Future.delayed(const Duration(milliseconds: 200)); // small pause
-  }
-}
 
   @override
   void dispose() {
@@ -96,48 +79,21 @@ Future<void> _startOrbitLoop() async {
         ),
         child: Stack(
           children: [
-            // Background blurred circle (bottom)
+            // Background blurred circle
             Positioned(
-              left: -48,
-              top: 726,
+              top: -132,
+              left: 76,
               child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                child: Opacity(
-                  opacity: 0.59,
-                  child: Container(
-                    width: 493,
-                    height: 367,
-                    decoration: ShapeDecoration(
-                      color: const Color(0x331A2E35),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(38835400),
-                      ),
-                    ),
-                  ),
+                  imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+              child: Container(
+                width: 420,
+                height: 420,
+                decoration:const BoxDecoration(
+                  color: Color.fromRGBO(0, 255, 255, 0.075), 
+                  shape: BoxShape.circle,
                 ),
               ),
             ),
-            // Background blurred circle (top)
-            Positioned(
-              left: -84,
-              top: -169,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                child: Opacity(
-                  opacity: 0.59,
-                  child: Container(
-                    width: 558,
-                    height: 283,
-                    decoration: ShapeDecoration(
-                      color: const Color(0x704ADEDE),
-                      shape: RoundedRectangleBorder(
-                        // Removed problematic BorderSide(width: 1)
-                        borderRadius: BorderRadius.circular(38835400),
-                      ),
-                    ),
-                  ),
-                ),
-              ),
             ),
 
             // Main content
@@ -178,37 +134,8 @@ Future<void> _startOrbitLoop() async {
                         ),
                       ),
                       // Decorative dots
-                      AnimatedBuilder(
-                        animation: _dotOrbitController,
-                        builder: (context, child) {
-                          const radius = 45.0; // orbit distance from the logo
-                          final angle = _dotOrbitController.value * 2 * math.pi;
-
-                          // lime starts top-right (−45°)
-                          final limeAngle = -math.pi / 4 + angle;
-                          final limeOffset = Offset(radius * math.cos(limeAngle), radius * math.sin(limeAngle));
-
-                          // cyan starts bottom-left (135°)
-                          final cyanAngle = (3 * math.pi / 4) + angle;
-                          final cyanOffset = Offset(radius * math.cos(cyanAngle), radius * math.sin(cyanAngle));
-
-                          return Stack(
-                            clipBehavior: Clip.none,
-                            children: [
-                              Positioned(
-                                top: limeOffset.dy - 6,
-                                right: -limeOffset.dx,
-                                child: _decorativeDot(24, const Color(0xFFA3E42F)),
-                              ),
-                              Positioned(
-                                bottom: -cyanOffset.dy - 6,
-                                left: cyanOffset.dx,
-                                child: _decorativeDot(16, const Color(0xFF4ADEDE)),
-                              ),
-                            ],
-                          );
-                        },
-                      ),
+                      Positioned(top: -6, right: 0, child: _decorativeDot(24, const Color(0xFFA3E42F))),
+                      Positioned(bottom: -6, left: 0, child: _decorativeDot(16, const Color(0xFF4ADEDE))),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -330,6 +257,6 @@ Future<void> _startOrbitLoop() async {
           ),
         );
       },
-    );
+    ); 
   }
 }
