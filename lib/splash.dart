@@ -9,9 +9,9 @@ class SplashScreenApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const SplashScreen(),
+      home: SplashScreen(),
     );
   }
 }
@@ -28,6 +28,7 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
   late Animation<double> _progressCyan;
   late Animation<double> _progressGreen;
   late Animation<double> _progressFade;
+  late AnimationController _dotOrbitController;
 
   late AnimationController _dotController;
 
@@ -38,13 +39,14 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
     // Progress bar animations
     _progressController =
         AnimationController(vsync: this, duration: const Duration(seconds: 2));
+
     _progressCyan = Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(parent: _progressController, curve: Curves.easeOut));
-    _progressGreen = Tween<double>(begin: 0.5, end: 1.5).animate(
+    _progressGreen = Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(
             parent: _progressController,
             curve: const Interval(0.3, 1.0, curve: Curves.easeOut)));
-    _progressFade = Tween<double>(begin: 1, end: 2).animate(
+    _progressFade = Tween<double>(begin: 0, end: 1).animate(
         CurvedAnimation(
             parent: _progressController,
             curve: const Interval(0.6, 1.0, curve: Curves.easeOut)));
@@ -55,12 +57,26 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
     _dotController =
         AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
           ..repeat(reverse: true);
+
+    _dotOrbitController = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 4),
+    );
+
+    _startOrbitLoop();
+  }
+
+  Future<void> _startOrbitLoop() async {
+    while (mounted) {
+      await _dotOrbitController.forward(from: 0); 
+    }
   }
 
   @override
   void dispose() {
     _progressController.dispose();
     _dotController.dispose();
+    _dotOrbitController.dispose(); 
     super.dispose();
   }
 
@@ -79,21 +95,46 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
         ),
         child: Stack(
           children: [
-            // Background blurred circle
+            // Background blurred circle (bottom)
             Positioned(
-              top: -132,
-              left: 76,
+              left: -48,
+              top: 726,
               child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-              child: Container(
-                width: 420,
-                height: 420,
-                decoration:const BoxDecoration(
-                  color: Color.fromRGBO(0, 255, 255, 0.075), 
-                  shape: BoxShape.circle,
+                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                child: Opacity(
+                  opacity: 0.59,
+                  child: Container(
+                    width: 493,
+                    height: 367,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x331A2E35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(38835400),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
+            // Background blurred circle (top)
+            Positioned(
+              left: -84,
+              top: -169,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                child: Opacity(
+                  opacity: 0.59,
+                  child: Container(
+                    width: 558,
+                    height: 283,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x704ADEDE),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(38835400)),
+                    ),
+                  ),
+                ),
+              ),
             ),
 
             // Main content
@@ -127,15 +168,56 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
                         ),
                         child: ClipRRect(
                           borderRadius: BorderRadius.circular(24),
-                          child: Image.network(
-                            "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/aLLDYhj5gp/kk805w1s_expires_30_days.png",
-                            fit: BoxFit.cover,
+                                         child: Padding(
+                            padding: const EdgeInsets.all(10.0), // Add 10 logical pixels of padding
+                            child: Image.network(
+                              "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/aLLDYhj5gp/kk805w1s_expires_30_days.png",
+                              fit: BoxFit.contain, // Changed to contain to respect padding better
+                            ),
                           ),
                         ),
                       ),
-                      // Decorative dots
-                      Positioned(top: -6, right: 0, child: _decorativeDot(24, const Color(0xFFA3E42F))),
-                      Positioned(bottom: -6, left: 0, child: _decorativeDot(16, const Color(0xFF4ADEDE))),
+                      
+                      Positioned.fill(
+                        child: AnimatedBuilder(
+                          animation: _dotOrbitController,
+                          builder: (context, child) {
+                            final RRect orbitRRect = RRect.fromRectAndRadius(
+                              const Rect.fromLTWH(0, 0, 160, 160), // Box is 160x160
+                              const Radius.circular(24), // Border radius is 24
+                            );
+                            final Path orbitPath = Path()..addRRect(orbitRRect);
+
+                            final PathMetric pathMetric = orbitPath.computeMetrics().first;
+                            final double pathLength = pathMetric.length;
+                            final double limeDistance = _dotOrbitController.value * pathLength;
+                            final Tangent? limeTangent = pathMetric.getTangentForOffset(limeDistance);
+                            final Offset limePos = limeTangent?.position ?? Offset.zero;
+
+                            // Cyan dot position (starts at 0.5, i.e., opposite)
+                            final double cyanDistance = (_dotOrbitController.value + 0.5) % 1.0 * pathLength;
+                            final Tangent? cyanTangent = pathMetric.getTangentForOffset(cyanDistance);
+                            final Offset cyanPos = cyanTangent?.position ?? Offset.zero;
+
+                            return Stack(
+                              clipBehavior: Clip.none,
+                              children: [
+                                // Positioned from top-left, centering the dot
+                                Positioned(
+                                  left: limePos.dx - 12, // 12 is half of dot size 24
+                                  top: limePos.dy - 12,
+                                  child: _decorativeDot(24, const Color(0xFFA3E42F)),
+                                ),
+                                Positioned(
+                                  left: cyanPos.dx - 8, // 8 is half of dot size 16
+                                  top: cyanPos.dy - 8,
+                                  child: _decorativeDot(16, const Color(0xFF4ADEDE)),
+                                ),
+                              ],
+                            );
+                          },
+                        ),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 24),
@@ -216,14 +298,18 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
   Widget _animatedProgressBar(Animation<double> animation, double width, List<Color> colors) {
     return AnimatedBuilder(
       animation: animation,
-      builder: (_, __) => Container(
-        width: width * animation.value,
-        height: 6,
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(999),
-          gradient: LinearGradient(colors: colors),
-        ),
-      ),
+      builder: (_, __) {
+        // Clamp the value between 0.0 and 1.0 to ensure it doesn't overflow
+        final animationValue = animation.value.clamp(0.0, 1.0);
+        return Container(
+          width: width * animationValue,
+          height: 6,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(999),
+            gradient: LinearGradient(colors: colors),
+          ),
+        );
+      }
     );
   }
 
@@ -257,6 +343,6 @@ class SplashScreenState extends State<SplashScreen> with TickerProviderStateMixi
           ),
         );
       },
-    ); 
+    );
   }
 }
