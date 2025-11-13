@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+import 'dashboard.dart'; // 1. IMPORTED THE DASHBOARD SCREEN
 
 class ChooseScreen extends StatelessWidget {
   const ChooseScreen({super.key});
@@ -139,8 +140,24 @@ class ChooseScreen extends StatelessWidget {
                           icon: Icons.person_outline_rounded,
                           onTap: () {
                             HapticFeedback.lightImpact();
-                            // TODO: Navigate to Warga (Citizen) dashboard
-                            print("Warga card tapped");
+                            // 2. ADDED NAVIGATION TO DASHBOARD
+                            Navigator.of(context).pushReplacement(
+                              PageRouteBuilder(
+                                pageBuilder: (context, animation,
+                                        secondaryAnimation) =>
+                                    const DashboardScreen(), // Navigate to Dashboard
+                                transitionsBuilder: (context, animation,
+                                    secondaryAnimation, child) {
+                                  return FadeTransition(
+                                    opacity: animation.drive(
+                                        CurveTween(curve: Curves.easeIn)),
+                                    child: child,
+                                  );
+                                },
+                                transitionDuration:
+                                    const Duration(milliseconds: 300),
+                              ),
+                            );
                           },
                         ),
                         const SizedBox(height: 24),
@@ -205,13 +222,11 @@ class ChooseScreen extends StatelessWidget {
               width: 64,
               height: 64,
               decoration: const ShapeDecoration(
-                // --- FIXED GRADIENT BACKGROUND ---
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                   colors: [Color(0xE5B3FFD5), Color(0xE528CFD8)],
                 ),
-                // --- END FIX ---
                 shape: OvalBorder(),
               ),
               child: Icon(icon, color: Colors.white, size: 32),
