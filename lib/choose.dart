@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'dashboard.dart'; // 1. IMPORTED THE DASHBOARD SCREEN
+
+import 'dashboard.dart';
+import 'responder_dashboard.dart';
 
 class ChooseScreen extends StatelessWidget {
   const ChooseScreen({super.key});
@@ -55,7 +57,8 @@ class ChooseScreen extends StatelessWidget {
                     decoration: ShapeDecoration(
                       color: const Color(0x704ADEDE),
                       shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(38835400)),
+                        borderRadius: BorderRadius.circular(38835400),
+                      ),
                     ),
                   ),
                 ),
@@ -67,7 +70,6 @@ class ChooseScreen extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.all(24.0),
                     child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         const SizedBox(height: 40),
                         Container(
@@ -81,7 +83,9 @@ class ChooseScreen extends StatelessWidget {
                               colors: [Color(0x4C4ADEDE), Color(0x5FA3E42F)],
                             ),
                             border: Border.all(
-                                color: const Color(0xB2FFFFFF), width: 1.16),
+                              color: const Color(0xB2FFFFFF),
+                              width: 1.16,
+                            ),
                           ),
                           child: ClipRRect(
                             borderRadius: BorderRadius.circular(16),
@@ -117,7 +121,6 @@ class ChooseScreen extends StatelessWidget {
                         const SizedBox(height: 48),
                         Text(
                           'Selamat Datang',
-                          textAlign: TextAlign.center,
                           style: GoogleFonts.instrumentSans(
                             color: const Color(0xFF1A2E35),
                             fontSize: 24,
@@ -127,7 +130,6 @@ class ChooseScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           'Silahkan pilih peran anda dengan sesuai',
-                          textAlign: TextAlign.center,
                           style: GoogleFonts.instrumentSans(
                             color: const Color(0x99192D34),
                             fontSize: 14,
@@ -140,24 +142,7 @@ class ChooseScreen extends StatelessWidget {
                           icon: Icons.person_outline_rounded,
                           onTap: () {
                             HapticFeedback.lightImpact();
-                            // 2. ADDED NAVIGATION TO DASHBOARD
-                            Navigator.of(context).pushReplacement(
-                              PageRouteBuilder(
-                                pageBuilder: (context, animation,
-                                        secondaryAnimation) =>
-                                    const DashboardScreen(), // Navigate to Dashboard
-                                transitionsBuilder: (context, animation,
-                                    secondaryAnimation, child) {
-                                  return FadeTransition(
-                                    opacity: animation.drive(
-                                        CurveTween(curve: Curves.easeIn)),
-                                    child: child,
-                                  );
-                                },
-                                transitionDuration:
-                                    const Duration(milliseconds: 300),
-                              ),
-                            );
+                            _navigate(context, const DashboardScreen());
                           },
                         ),
                         const SizedBox(height: 24),
@@ -167,8 +152,7 @@ class ChooseScreen extends StatelessWidget {
                           icon: Icons.local_hospital_outlined,
                           onTap: () {
                             HapticFeedback.lightImpact();
-                            // TODO: Navigate to Responder dashboard
-                            print("Responder card tapped");
+                            _navigate(context, const ResponderDashboardScreen());
                           },
                         ),
                         const SizedBox(height: 40),
@@ -180,6 +164,21 @@ class ChooseScreen extends StatelessWidget {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  void _navigate(BuildContext context, Widget screen) {
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (_, __, ___) => screen,
+        transitionsBuilder: (_, animation, __, child) => FadeTransition(
+          opacity: animation.drive(
+            CurveTween(curve: Curves.easeIn),
+          ),
+          child: child,
+        ),
+        transitionDuration: const Duration(milliseconds: 300),
       ),
     );
   }
@@ -234,7 +233,6 @@ class ChooseScreen extends StatelessWidget {
             const SizedBox(height: 24),
             Text(
               title,
-              textAlign: TextAlign.center,
               style: GoogleFonts.instrumentSans(
                 color: const Color(0xFF1A2E35),
                 fontSize: 16,
