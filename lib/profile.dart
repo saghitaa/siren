@@ -10,16 +10,13 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  // Dummy user data (replace with real data later)
   String _name = 'Christopher Bang';
   String _email = 'chris.bang@example.com';
   String _phone = '+62 812 3456 7890';
   String _location = 'Gunungpati, Kota Semarang';
 
   final List<Map<String, String>> _emergencyContacts = [
-    {'label': 'Ayah - Budi Santoso', 'phone': '+62 811 2222 3333'},
-    {'label': 'Ibu - Siti Rahayu', 'phone': '+62 812 4444 5555'},
-    {'label': 'Kontak 3', 'phone': '+62 812 0000 0000'},
+    {'label': 'Ma Fren - Budi Santoso', 'phone': '+62 811 2222 3333'},
   ];
 
   @override

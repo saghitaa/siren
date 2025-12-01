@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
-
 class ResponderProfileScreen extends StatefulWidget {
   const ResponderProfileScreen({super.key});
 
@@ -27,16 +26,7 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
     'Tenaga Ahli',
   ];
 
-  String? _selectedResponderType = 'Polisi';
-
-  @override
-  void dispose() {
-    _nameController.dispose();
-    _emailController.dispose();
-    _phoneController.dispose();
-    _locationController.dispose();
-    super.dispose();
-  }
+  String _selectedResponderType = 'Polisi';
 
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -47,7 +37,7 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFE0EBF0),
+      backgroundColor: const Color(0xFFF5F9FA),
       body: Container(
         width: double.infinity,
         height: double.infinity,
@@ -56,7 +46,7 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFE0EBF0),
+              Color(0xFFF5F9FA),
               Color(0xFFF0F9FF),
               Color(0xFFE8F8F5),
             ],
@@ -72,14 +62,14 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 20),
-                    _topBar(),
-                    const SizedBox(height: 32),
-                    _avatarSection(),
+                    _topBar(context),
+                    const SizedBox(height: 24),
+                    _avatarCard(),
                     const SizedBox(height: 24),
                     _personalInfoSection(),
                     const SizedBox(height: 24),
-                    _emergencyContactsSection(),
-                    const SizedBox(height: 24),
+                    _responderTypeSection(),
+                    const SizedBox(height: 32),
                     _saveButton(),
                     const SizedBox(height: 40),
                   ],
@@ -92,7 +82,6 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
     );
   }
 
-  // ───────────────── BACKGROUND BLUR
   Widget _backgroundBlur() {
     return Stack(
       children: [
@@ -104,13 +93,15 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
             child: Container(
               width: 420.76,
               height: 420.76,
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 gradient: const LinearGradient(
                   begin: Alignment(0.00, 0.00),
                   end: Alignment(1.00, 1.00),
                   colors: [Color(0xFF4ADEDE), Color(0xFFA3E42F)],
                 ),
-                borderRadius: BorderRadius.circular(38741600),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(38741600),
+                ),
               ),
             ),
           ),
@@ -123,13 +114,15 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
             child: Container(
               width: 349.98,
               height: 349.98,
-              decoration: BoxDecoration(
+              decoration: ShapeDecoration(
                 gradient: const LinearGradient(
                   begin: Alignment(1.00, 0.00),
                   end: Alignment(0.00, 1.00),
                   colors: [Color(0xFFA3E42F), Color(0xFF4ADEDE)],
                 ),
-                borderRadius: BorderRadius.circular(38741600),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(38741600),
+                ),
               ),
             ),
           ),
@@ -138,16 +131,14 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
     );
   }
 
-  // ───────────────── TOP BAR
-  Widget _topBar() {
+  Widget _topBar(BuildContext context) {
     return Row(
       children: [
-        InkWell(
-          borderRadius: BorderRadius.circular(14),
+        GestureDetector(
           onTap: () => Navigator.pop(context),
           child: Container(
-            width: 44,
-            height: 44,
+            width: 43.98,
+            height: 43.98,
             decoration: ShapeDecoration(
               color: Colors.white.withOpacity(0.60),
               shape: RoundedRectangleBorder(
@@ -162,11 +153,14 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
                   color: Color(0x19000000),
                   blurRadius: 4,
                   offset: Offset(0, 2),
-                )
+                ),
               ],
             ),
-            child: const Icon(Icons.arrow_back_ios_new_rounded,
-                size: 18, color: Color(0xFF1A2E35)),
+            child: const Icon(
+              Icons.arrow_back_ios_new_rounded,
+              size: 18,
+              color: Color(0xFF1A2E35),
+            ),
           ),
         ),
         const SizedBox(width: 16),
@@ -176,41 +170,44 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
             color: const Color(0xFF1A2E35),
             fontSize: 20,
             fontWeight: FontWeight.w500,
+            height: 1.5,
           ),
         ),
       ],
     );
   }
 
-  // ───────────────── AVATAR
-  Widget _avatarSection() {
+  Widget _avatarCard() {
     return Center(
-      child: Container(
-        width: 120,
-        height: 120,
-        decoration: ShapeDecoration(
-          color: Colors.white.withOpacity(0),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(
-              width: 1.15,
-              color: Color(0x4C4ADEDE),
+      child: Stack(
+        children: [
+          Container(
+            width: 119.99,
+            height: 119.99,
+            decoration: ShapeDecoration(
+              color: Colors.white.withOpacity(0),
+              shape: RoundedRectangleBorder(
+                side: const BorderSide(
+                  width: 1.15,
+                  color: Color(0x4C4ADEDE),
+                ),
+                borderRadius: BorderRadius.circular(24),
+              ),
+              shadows: const [
+                BoxShadow(
+                  color: Color(0x334ADEDE),
+                  blurRadius: 12,
+                  offset: Offset(0, 4),
+                ),
+              ],
             ),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x334ADEDE),
-              blurRadius: 12,
-              offset: Offset(0, 4),
-            )
-          ],
-        ),
-        child: Stack(
-          children: [
-            Positioned.fill(
+            child: Padding(
+              padding: const EdgeInsets.all(1.15),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(24),
                 child: Container(
+                  width: double.infinity,
+                  height: double.infinity,
                   decoration: const BoxDecoration(
                     image: DecorationImage(
                       image: NetworkImage("https://placehold.co/118x118"),
@@ -220,12 +217,17 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
                 ),
               ),
             ),
-            Positioned(
-              right: 4,
-              bottom: 4,
+          ),
+          Positioned(
+            right: 0,
+            bottom: 0,
+            child: GestureDetector(
+              onTap: () {
+                _showSnack('Fitur ubah foto akan ditambahkan nanti.');
+              },
               child: Container(
-                width: 48,
-                height: 48,
+                width: 47.99,
+                height: 47.99,
                 decoration: ShapeDecoration(
                   gradient: const LinearGradient(
                     begin: Alignment(0.50, 0.00),
@@ -241,70 +243,86 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
                       color: Color(0x4C4ADEDE),
                       blurRadius: 8,
                       offset: Offset(0, 4),
-                    )
+                    ),
                   ],
                 ),
-                child: const Icon(Icons.edit_rounded,
-                    size: 20, color: Colors.white),
+                child: const Icon(
+                  Icons.camera_alt_rounded,
+                  size: 22,
+                  color: Colors.white,
+                ),
               ),
             ),
-          ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _sectionTitle(String text) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8.0),
+      child: Text(
+        text,
+        style: GoogleFonts.instrumentSans(
+          color: const Color(0xFF1A2E35),
+          fontSize: 16,
+          fontWeight: FontWeight.w500,
+          height: 1.5,
         ),
       ),
     );
   }
 
-  // ───────────────── PERSONAL INFO + JENIS RESPONDER
   Widget _personalInfoSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Informasi Responder',
-          style: GoogleFonts.instrumentSans(
-            color: const Color(0xFF1A2E35),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        const SizedBox(height: 16),
-        _infoTextFieldCard(
+        _sectionTitle('Informasi Responder'),
+        const SizedBox(height: 8),
+        _infoCard(
           label: 'Nama Pengguna',
-          icon: Icons.person_outline_rounded,
           controller: _nameController,
+          icon: Icons.person_outline_rounded,
         ),
         const SizedBox(height: 12),
-        _infoTextFieldCard(
+        _infoCard(
           label: 'Email',
-          icon: Icons.mail_outline_rounded,
           controller: _emailController,
+          icon: Icons.mail_outline_rounded,
+          keyboardType: TextInputType.emailAddress,
         ),
         const SizedBox(height: 12),
-        _infoTextFieldCard(
+        _infoCard(
           label: 'Nomor Telepon',
-          icon: Icons.phone_outlined,
           controller: _phoneController,
+          icon: Icons.phone_outlined,
+          keyboardType: TextInputType.phone,
         ),
         const SizedBox(height: 12),
-        _infoTextFieldCard(
+        _infoCard(
           label: 'Lokasi',
-          icon: Icons.location_on_outlined,
           controller: _locationController,
+          icon: Icons.location_on_outlined,
         ),
-        const SizedBox(height: 16),
-        _responderTypeDropdownCard(), // <- aligned card
       ],
     );
   }
 
-  Widget _infoTextFieldCard({
+  Widget _infoCard({
     required String label,
-    required IconData icon,
     required TextEditingController controller,
+    required IconData icon,
+    TextInputType keyboardType = TextInputType.text,
   }) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 17, vertical: 14),
+      padding: const EdgeInsets.only(
+        top: 17.14,
+        left: 17.14,
+        right: 17.14,
+        bottom: 11,
+      ),
       decoration: ShapeDecoration(
         color: Colors.white.withOpacity(0.70),
         shape: RoundedRectangleBorder(
@@ -319,7 +337,7 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
             color: Color(0x0C000000),
             blurRadius: 4,
             offset: Offset(0, 2),
-          )
+          ),
         ],
       ),
       child: Column(
@@ -331,19 +349,30 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
               color: const Color(0x99192D34),
               fontSize: 11,
               fontWeight: FontWeight.w500,
+              height: 1.5,
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 8),
           Row(
             children: [
-              Icon(icon, size: 18, color: const Color(0x99192D34)),
-              const SizedBox(width: 10),
+              SizedBox(
+                width: 20,
+                height: 20,
+                child: Icon(
+                  icon,
+                  size: 18,
+                  color: const Color(0x99192D34),
+                ),
+              ),
+              const SizedBox(width: 12),
               Expanded(
                 child: TextField(
                   controller: controller,
+                  keyboardType: keyboardType,
                   style: GoogleFonts.instrumentSans(
-                    color: const Color(0xFF1A2E35),
+                    color: const Color(0xFF192D34).withOpacity(0.75),
                     fontSize: 14,
+                    fontWeight: FontWeight.w400,
                   ),
                   decoration: const InputDecoration(
                     isDense: true,
@@ -358,279 +387,107 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
     );
   }
 
-  // ───────────────── JENIS RESPONDER DROPDOWN (aligned like other cards)
-  Widget _responderTypeDropdownCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(17),
-      decoration: ShapeDecoration(
-        color: Colors.white.withOpacity(0.95),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1.15,
-            color: Color(0x4C4ADEDE),
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x26000000),
-            blurRadius: 24,
-            offset: Offset(0, 8),
-          )
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Jenis Responder',
-            style: GoogleFonts.instrumentSans(
-              color: const Color(0xFF1A2E35),
-              fontSize: 12,
-              fontWeight: FontWeight.w500,
-            ),
-          ),
-          const SizedBox(height: 10),
-          Container(
-            height: 45,
-            padding: const EdgeInsets.symmetric(horizontal: 12),
-            decoration: ShapeDecoration(
-              gradient: const LinearGradient(
-                begin: Alignment(0.50, 0.00),
-                end: Alignment(0.50, 1.00),
-                colors: [Color(0x334ADEDE), Color(0x33A3E42F)],
-              ),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: DropdownButtonHideUnderline(
-              child: DropdownButton<String>(
-                value: _selectedResponderType,
-                icon: const Icon(
-                  Icons.keyboard_arrow_down_rounded,
-                  color: Color(0xFF1A2E35),
-                ),
-                style: GoogleFonts.instrumentSans(
-                  color: const Color(0xFF1A2E35),
-                  fontSize: 14,
-                ),
-                items: _responderTypes.map((type) {
-                  return DropdownMenuItem<String>(
-                    value: type,
-                    child: Row(
-                      children: [
-                        const Icon(Icons.circle, // placeholder bullet
-                            size: 8, color: Color(0xFF1A2E35)),
-                        const SizedBox(width: 8),
-                        Text(type),
-                      ],
-                    ),
-                  );
-                }).toList(),
-                onChanged: (value) {
-                  setState(() {
-                    _selectedResponderType = value;
-                  });
-                },
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // ───────────────── EMERGENCY CONTACTS (static mock like your design)
-  Widget _emergencyContactsSection() {
+  Widget _responderTypeSection() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Kontak Darurat',
-          style: GoogleFonts.instrumentSans(
-            color: const Color(0xFF1A2E35),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
+        _sectionTitle('Jenis Responder'),
+        const SizedBox(height: 8),
+        Container(
+          width: double.infinity,
+          padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 9.15),
+          decoration: ShapeDecoration(
+            color: Colors.white.withOpacity(0.95),
+            shape: RoundedRectangleBorder(
+              side: const BorderSide(
+                width: 1.15,
+                color: Color(0x4C4ADEDE),
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            shadows: const [
+              BoxShadow(
+                color: Color(0x26000000),
+                blurRadius: 24,
+                offset: Offset(0, 8),
+              ),
+            ],
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedResponderType,
+              isExpanded: true,
+              icon: const Icon(
+                Icons.expand_more_rounded,
+                color: Color(0xFF1A2E35),
+              ),
+              borderRadius: BorderRadius.circular(16),
+              items: _responderTypes.map((type) {
+                return DropdownMenuItem<String>(
+                  value: type,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 4),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: Icon(
+                            Icons.shield_outlined,
+                            size: 18,
+                            color: const Color(0x99192D34),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Text(
+                          type,
+                          style: GoogleFonts.instrumentSans(
+                            color: const Color(0xFF1A2E35),
+                            fontSize: 14,
+                            fontWeight: FontWeight.w400,
+                            height: 1.5,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                );
+              }).toList(),
+              onChanged: (value) {
+                if (value == null) return;
+                setState(() {
+                  _selectedResponderType = value;
+                });
+              },
+            ),
           ),
         ),
-        const SizedBox(height: 6),
-        Text(
-          'Tambahkan kontak yang dapat dihubungi dalam keadaan darurat',
-          style: GoogleFonts.instrumentSans(
-            color: const Color(0x99192D34),
-            fontSize: 12,
-          ),
-        ),
-        const SizedBox(height: 12),
-        _emergencyContactCard(
-          title: 'Ayah - Budi Santoso',
-          phone: '+62 811 2222 3333',
-        ),
-        const SizedBox(height: 8),
-        _emergencyContactCard(
-          title: 'Ibu - Siti Rahayu',
-          phone: '+62 812 4444 5555',
-        ),
-        const SizedBox(height: 8),
-        _emergencyContactCard(
-          title: 'Kontak 3',
-          phone: '+62 812 0000 0000',
-        ),
-        const SizedBox(height: 12),
-        _addEmergencyContactButton(),
       ],
     );
   }
 
-  Widget _emergencyContactCard({
-    required String title,
-    required String phone,
-  }) {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: ShapeDecoration(
-        color: Colors.white.withOpacity(0.70),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(
-            width: 1.15,
-            color: Color(0x264ADEDE),
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          )
-        ],
-      ),
-      child: Row(
-        children: [
-          const Icon(Icons.person_outline_rounded,
-              size: 20, color: Color(0x99192D34)),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: GoogleFonts.instrumentSans(
-                    color: const Color(0xFF1A2E35),
-                    fontSize: 14,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  phone,
-                  style: GoogleFonts.instrumentSans(
-                    color: const Color(0x99192D34),
-                    fontSize: 12,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            width: 40,
-            height: 40,
-            decoration: ShapeDecoration(
-              color: const Color(0x19E7000B),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-            ),
-            child: const Icon(Icons.call_rounded,
-                size: 18, color: Color(0xFFE7000B)),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _addEmergencyContactButton() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => _showSnack('Tambah Kontak Darurat (mock-up)'),
-      child: Container(
-        height: 56,
-        width: double.infinity,
-        decoration: ShapeDecoration(
-          gradient: const LinearGradient(
-            begin: Alignment(0.50, 0.00),
-            end: Alignment(0.50, 1.00),
-            colors: [Color(0x334ADEDE), Color(0x33A3E42F)],
-          ),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(
-              width: 1.15,
-              color: Color(0x4C4ADEDE),
-            ),
-            borderRadius: BorderRadius.circular(16),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            )
-          ],
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            const Icon(Icons.add_rounded,
-                size: 20, color: Color(0xFF1A2E35)),
-            const SizedBox(width: 8),
-            Text(
-              'Tambah Kontak Darurat',
-              style: GoogleFonts.instrumentSans(
-                color: const Color(0xFF1A2E35),
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  // ───────────────── SAVE BUTTON
   Widget _saveButton() {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: () => _showSnack('Perubahan profil responder disimpan.'),
-      child: Container(
-        width: double.infinity,
-        height: 56,
-        decoration: ShapeDecoration(
-          color: const Color(0xCCE7000B),
+    return SizedBox(
+      width: double.infinity,
+      height: 56,
+      child: ElevatedButton(
+        onPressed: () {
+          _showSnack('Perubahan profil responder disimpan.');
+        },
+        style: ElevatedButton.styleFrom(
+          backgroundColor: const Color(0xFFE7000B),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
           ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x4C4ADEDE),
-              blurRadius: 12,
-              offset: Offset(0, 6),
-              spreadRadius: -2,
-            )
-          ],
+          elevation: 6,
+          shadowColor: const Color(0x4C4ADEDE),
         ),
-        child: Center(
-          child: Text(
-            'Simpan Perubahan',
-            style: GoogleFonts.instrumentSans(
-              color: Colors.white,
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-            ),
+        child: Text(
+          'Simpan Perubahan',
+          style: GoogleFonts.instrumentSans(
+            color: Colors.white,
+            fontSize: 14,
+            fontWeight: FontWeight.w500,
           ),
         ),
       ),

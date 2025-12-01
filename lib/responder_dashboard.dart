@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'responder_profile.dart';
-import 'splash.dart'; // GANTI ini kalau nama file splash kamu berbeda
+import 'splash.dart';
 
 class ResponderDashboardScreen extends StatefulWidget {
   const ResponderDashboardScreen({super.key});
@@ -13,8 +13,7 @@ class ResponderDashboardScreen extends StatefulWidget {
 }
 
 class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
-  // 0 = Forum, 1 = Dashboard (default)
-  int _selectedIndex = 1;
+  int _selectedIndex = 1; // 0 = Forum, 1 = Dashboard
   int _availabilityIndex = 0;
 
   final List<Map<String, dynamic>> _incidents = [
@@ -76,24 +75,28 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     const SizedBox(height: 20),
+
+                    // 1. PROFILE CARD
                     _headerCard(context),
                     const SizedBox(height: 20),
-                    _availabilityCard(),
-                    const SizedBox(height: 20),
-                    _quickActionsSection(),
-                    const SizedBox(height: 20),
-                    _menuSection(), // <── MENU BARU
-                    const SizedBox(height: 20),
+
+                    // 2. LAPORAN DARURAT
                     _incidentHeader(),
                     const SizedBox(height: 12),
-                    ..._incidents
-                        .map(
-                          (data) => Padding(
-                            padding: const EdgeInsets.only(bottom: 12),
-                            child: _incidentCard(data),
-                          ),
-                        )
-                        .toList(),
+                    ..._incidents.map(
+                      (data) => Padding(
+                        padding: const EdgeInsets.only(bottom: 12),
+                        child: _incidentCard(data),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+
+                    // 3. AVAILABILITY STATUS
+                    _availabilityCard(),
+                    const SizedBox(height: 20),
+
+                    // 4. MENU (LAST)
+                    _menuSection(),
                     const SizedBox(height: 120),
                   ],
                 ),
@@ -106,7 +109,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ───────────────── BACKGROUND BLUR
   Widget _backgroundBlurLikeOthers() {
     return Stack(
       children: [
@@ -150,20 +152,20 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ───────────────── HEADER CARD
   Widget _headerCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: ShapeDecoration(
-        color: Colors.white.withOpacity(0.96),
+        color: const Color(0xB2FFFFFF),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(width: 1.16, color: Color(0xCCFFFFFF)),
         ),
         shadows: const [
           BoxShadow(
-            color: Color(0x19000000),
-            blurRadius: 18,
-            offset: Offset(0, 10),
+            color: Color(0x0C000000),
+            blurRadius: 6,
+            offset: Offset(0, 4),
           ),
         ],
       ),
@@ -176,8 +178,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                 height: 40,
                 decoration: ShapeDecoration(
                   gradient: const LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
+                    begin: Alignment(0.50, 0.00),
+                    end: Alignment(0.50, 1.00),
                     colors: [Color(0x4C4ADEDE), Color(0x5FA3E42F)],
                   ),
                   shape: RoundedRectangleBorder(
@@ -222,16 +224,11 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
               Container(
                 width: 34,
                 height: 34,
-                decoration: ShapeDecoration(
-                  color: Colors.white,
-                  shape: const CircleBorder(),
-                  shadows: const [
-                    BoxShadow(
-                      color: Color(0x14000000),
-                      blurRadius: 6,
-                      offset: Offset(0, 3),
-                    ),
-                  ],
+                decoration: const ShapeDecoration(
+                  color: Color(0x99FFFFFF),
+                  shape: OvalBorder(
+                    side: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
+                  ),
                 ),
                 child: const Icon(
                   Icons.notifications_none_rounded,
@@ -312,9 +309,15 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                             padding: const EdgeInsets.symmetric(
                                 horizontal: 10, vertical: 4),
                             decoration: ShapeDecoration(
-                              color: const Color(0xFFE7F8EC),
+                              gradient: const LinearGradient(
+                                begin: Alignment(0.50, 0.00),
+                                end: Alignment(0.50, 1.00),
+                                colors: [Color(0x334ADEDE), Color(0x33A3E42F)],
+                              ),
                               shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(999),
+                                side: const BorderSide(
+                                    width: 1.16, color: Color(0x4C4ADEDE)),
+                                borderRadius: BorderRadius.circular(38835400),
                               ),
                             ),
                             child: Row(
@@ -356,7 +359,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ───────────────── AVAILABILITY
   Widget _availabilityCard() {
     final List<String> labels = [
       'Tersedia',
@@ -368,15 +370,16 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: ShapeDecoration(
-        color: Colors.white.withOpacity(0.96),
+        color: const Color(0xB2FFFFFF),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)),
         ),
         shadows: const [
           BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            color: Color(0x0C000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -437,124 +440,20 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ───────────────── QUICK ACTIONS (boxed)
-  Widget _quickActionsSection() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: ShapeDecoration(
-        color: Colors.white.withOpacity(0.96),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Aksi Cepat',
-            style: GoogleFonts.instrumentSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF1A2E35),
-            ),
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _quickActionCard(
-                icon: Icons.map_outlined,
-                title: 'Peta Laporan',
-                onTap: () => _showSnack('Buka peta laporan responder.'),
-              ),
-              const SizedBox(width: 10),
-              _quickActionCard(
-                icon: Icons.history_rounded,
-                title: 'Riwayat',
-                onTap: () => _showSnack('Buka riwayat tanggapan.'),
-              ),
-              const SizedBox(width: 10),
-              _quickActionCard(
-                icon: Icons.group_outlined,
-                title: 'Tim',
-                onTap: () => _showSnack('Buka tim responder.'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _quickActionCard({
-    required IconData icon,
-    required String title,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(18),
-        onTap: onTap,
-        child: Ink(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
-          decoration: ShapeDecoration(
-            color: const Color(0xF9FFFFFF),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-              side: const BorderSide(
-                width: 1.1,
-                color: Color(0x264ADEDE),
-              ),
-            ),
-          ),
-          child: Column(
-            children: [
-              Container(
-                width: 32,
-                height: 32,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFE8F8F5),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Icon(icon,
-                    size: 18, color: const Color(0xFF1A2E35)),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: GoogleFonts.instrumentSans(
-                  fontSize: 11,
-                  color: const Color(0xFF1A2E35),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ───────────────── MENU (PENGATURAN & KELUAR)
   Widget _menuSection() {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: ShapeDecoration(
-        color: Colors.white.withOpacity(0.96),
+        color: const Color(0xB2FFFFFF),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)),
         ),
         shadows: const [
           BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 12,
-            offset: Offset(0, 6),
+            color: Color(0x0C000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -608,16 +507,23 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
       borderRadius: BorderRadius.circular(16),
       onTap: onTap,
       child: Ink(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(17),
         decoration: ShapeDecoration(
-          color: const Color(0xF9FFFFFF),
+          color: const Color(0x99FFFFFF),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
             side: const BorderSide(
-              width: 1.1,
+              width: 1.16,
               color: Color(0x264ADEDE),
             ),
           ),
+          shadows: const [
+            BoxShadow(
+              color: Color(0x0C000000),
+              blurRadius: 4,
+              offset: Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           children: [
@@ -648,7 +554,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ───────────────── INCIDENTS
   Widget _incidentHeader() {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -679,19 +584,19 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: ShapeDecoration(
-        color: Colors.white,
+        color: const Color(0xB2FFFFFF),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(18),
+          borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            width: 1.1,
-            color: accent.withOpacity(0.3),
+            width: 1.16,
+            color: accent.withOpacity(0.4),
           ),
         ),
         shadows: const [
           BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 10,
-            offset: Offset(0, 6),
+            color: Color(0x0C000000),
+            blurRadius: 4,
+            offset: Offset(0, 2),
           ),
         ],
       ),
@@ -842,7 +747,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ───────────────── BOTTOM NAV (2 icons, donut sits over active one)
   Widget _bottomNav() {
     return Container(
       height: 90,
@@ -867,6 +771,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
             label: 'Forum',
             index: 0,
             onTap: () {
+              setState(() {
+                _selectedIndex = 0;
+              });
               _showSnack('Forum responder akan hadir di sini.');
             },
           ),
@@ -875,7 +782,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
             label: 'Dashboard',
             index: 1,
             onTap: () {
-              // Already here
+              setState(() {
+                _selectedIndex = 1;
+              });
             },
           ),
         ],
@@ -892,14 +801,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     final bool active = _selectedIndex == index;
 
     if (active) {
-      // Donut style active
       return GestureDetector(
-        onTap: () {
-          setState(() {
-            _selectedIndex = index;
-          });
-          onTap();
-        },
+        onTap: onTap,
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
@@ -914,7 +817,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                     color: Color(0x19000000),
                     blurRadius: 15,
                     offset: Offset(0, 10),
-                  )
+                    spreadRadius: -3,
+                  ),
                 ],
               ),
               child: Container(
@@ -934,15 +838,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
       );
     }
 
-    // Inactive
     return InkWell(
       borderRadius: BorderRadius.circular(14),
-      onTap: () {
-        setState(() {
-          _selectedIndex = index;
-        });
-        onTap();
-      },
+      onTap: onTap,
       child: Container(
         padding: const EdgeInsets.only(top: 12),
         width: 70,
