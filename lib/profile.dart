@@ -10,10 +10,10 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  String _name = 'Christopher Bang';
-  String _email = 'chris.bang@example.com';
-  String _phone = '+62 812 3456 7890';
-  String _location = 'Gunungpati, Kota Semarang';
+  final String _name = 'Christopher Bang';
+  final String _email = 'chris.bang@example.com';
+  final String _phone = '+62 812 3456 7890';
+  final String _location = 'Gunungpati, Kota Semarang';
 
   final List<Map<String, String>> _emergencyContacts = [
     {'label': 'Ma Fren - Budi Santoso', 'phone': '+62 811 2222 3333'},
@@ -616,7 +616,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
                       ),
                       onPressed: () {
                         if (nameCtrl.text.trim().isEmpty ||
-                            phoneCtrl.text.trim().isEmpty) return;
+                            phoneCtrl.text.trim().isEmpty) {
+                          return;
+                        }
 
                         setState(() {
                           _emergencyContacts.add({

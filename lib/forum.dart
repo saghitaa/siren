@@ -27,26 +27,23 @@ class _ForumScreenState extends State<ForumScreen> {
     super.dispose();
   }
 
-  void _handlePost() {
-    final text = _postController.text.trim();
-    if (text.isEmpty) return;
+void _handlePost() {
+  if (_postController.text.trim().isEmpty) return;
 
-    final roleLabel = widget.isResponder ? 'Responder' : 'Warga';
-
-    setState(() {
-      _posts.insert(0, {
-        'name': 'Nama Pengguna',
-        'time': 'Baru saja',
-        'role': roleLabel,
-        'content': text,
-        'replies': 0,
-        'likes': 0,
-        'profileImageUrl': null,
-      });
-      _postController.clear();
-      FocusScope.of(context).unfocus();
+  setState(() {
+    _posts.insert(0, {
+      'name': 'Nama Pengguna',
+      'time': 'Baru saja',
+      'role': widget.isResponder ? 'Responder' : 'Warga', 
+      'content': _postController.text.trim(),
+      'replies': 0,
+      'likes': 0,
+      'profileImageUrl': null,
     });
-  }
+    _postController.clear();
+    FocusScope.of(context).unfocus();
+  });
+}
 
   @override
   Widget build(BuildContext context) {

@@ -1,8 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
+
+import 'forum.dart';
+import 'map.dart';
 import 'responder_profile.dart';
+import 'settings.dart';
 import 'splash.dart';
+
 
 class ResponderDashboardScreen extends StatefulWidget {
   const ResponderDashboardScreen({super.key});
@@ -54,20 +59,58 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFE0EBF0),
       body: Container(
+        width: double.infinity,
+        height: double.infinity,
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE0EBF0),
-              Color(0xFFF0F9FF),
-              Color(0xFFE8F8F5),
-            ],
+            colors: [Color(0xFFE0EBF0), Color(0xFFF0F9FF), Color(0xFFE8F8F5)],
           ),
         ),
         child: Stack(
           children: [
-            _backgroundBlurLikeOthers(),
+            // --- BACKGROUND BLURS ---
+            Positioned(
+              left: -48,
+              top: 726,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                child: Opacity(
+                  opacity: 0.59,
+                  child: Container(
+                    width: 493,
+                    height: 367,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x331A2E35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(38835400),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -84,
+              top: -169,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                child: Opacity(
+                  opacity: 0.59,
+                  child: Container(
+                    width: 558,
+                    height: 283,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x704ADEDE),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(38835400),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
             SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -106,49 +149,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
         ),
       ),
       bottomNavigationBar: _bottomNav(),
-    );
-  }
-
-  Widget _backgroundBlurLikeOthers() {
-    return Stack(
-      children: [
-        Positioned(
-          left: -84,
-          top: -169,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-            child: Opacity(
-              opacity: 0.59,
-              child: Container(
-                width: 558,
-                height: 283,
-                decoration: BoxDecoration(
-                  color: const Color(0x704ADEDE),
-                  borderRadius: BorderRadius.circular(38835400),
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          left: -48,
-          bottom: -60,
-          child: ImageFiltered(
-            imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-            child: Opacity(
-              opacity: 0.59,
-              child: Container(
-                width: 493,
-                height: 367,
-                decoration: BoxDecoration(
-                  color: const Color(0x331A2E35),
-                  borderRadius: BorderRadius.circular(38835400),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ],
     );
   }
 
@@ -470,11 +470,31 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
           ),
           const SizedBox(height: 12),
           _menuCard(
+            icon: Icons.map_outlined,
+            title: 'Peta Laporan',
+            color: const Color(0xFF1A2E35),
+            iconBg: const Color(0x33A3E42F),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const MapScreen(isResponder: true),
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 8),
+          _menuCard(
             icon: Icons.settings_outlined,
             title: 'Pengaturan',
             color: const Color(0xFF1A2E35),
             iconBg: const Color(0x334ADEDE),
-            onTap: () => _showSnack('Pengaturan responder akan ditambahkan.'),
+            onTap: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                  builder: (_) => const SettingsScreen(),
+                ),
+              );
+            },
           ),
           const SizedBox(height: 8),
           _menuCard(
@@ -747,133 +767,144 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  Widget _bottomNav() {
-    return Container(
-      height: 90,
-      decoration: const BoxDecoration(
-        color: Color(0xCCFFFFFF),
-        border: Border(
-          top: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 12,
-            offset: Offset(0, -4),
-          )
-        ],
+  // ───────────────── BOTTOM NAV (Responder: Forum + Dashboard)
+Widget _bottomNav() {
+  return Container(
+    height: 90,
+    decoration: const BoxDecoration(
+      color: Color(0xCCFFFFFF),
+      border: Border(
+        top: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceAround,
-        children: [
-          _navItem(
-            icon: Icons.forum_outlined,
-            label: 'Forum',
-            index: 0,
-            onTap: () {
-              setState(() {
-                _selectedIndex = 0;
-              });
-              _showSnack('Forum responder akan hadir di sini.');
-            },
-          ),
-          _navItem(
-            icon: Icons.grid_view_outlined,
-            label: 'Dashboard',
-            index: 1,
-            onTap: () {
-              setState(() {
-                _selectedIndex = 1;
-              });
-            },
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _navItem({
-    required IconData icon,
-    required String label,
-    required int index,
-    required VoidCallback onTap,
-  }) {
-    final bool active = _selectedIndex == index;
-
-    if (active) {
-      return GestureDetector(
-        onTap: onTap,
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              width: 60,
-              height: 60,
-              decoration: const ShapeDecoration(
-                color: Color(0xCCFFFFFF),
-                shape: CircleBorder(),
-                shadows: [
-                  BoxShadow(
-                    color: Color(0x19000000),
-                    blurRadius: 15,
-                    offset: Offset(0, 10),
-                    spreadRadius: -3,
-                  ),
-                ],
+      boxShadow: [
+        BoxShadow(
+          color: Color(0x14000000),
+          blurRadius: 12,
+          offset: Offset(0, -4),
+        )
+      ],
+    ),
+    child: Row(
+      mainAxisAlignment: MainAxisAlignment.spaceAround,
+      children: [
+        _navItem(
+          icon: Icons.forum_outlined,
+          label: 'Forum',
+          index: 0,
+          onTap: () {
+            setState(() {
+              _selectedIndex = 0;
+            });
+            Navigator.of(context).pushReplacement(
+              PageRouteBuilder(
+                pageBuilder: (_, animation, __) =>
+                    const ForumScreen(isResponder: true),
+                transitionsBuilder: (_, animation, __, child) =>
+                    FadeTransition(opacity: animation, child: child),
               ),
-              child: Container(
-                margin: const EdgeInsets.all(5),
-                decoration: const ShapeDecoration(
-                  color: Color(0x89A3E42F),
-                  shape: CircleBorder(),
-                ),
-                child: Icon(
-                  icon,
-                  color: const Color(0xFF1A2E35),
-                ),
-              ),
-            ),
-          ],
+            );
+          },
         ),
-      );
-    }
+        _navItem(
+          icon: Icons.grid_view_outlined,
+          label: 'Dashboard',
+          index: 1,
+          onTap: () {
+            // already here, no navigation
+            setState(() {
+              _selectedIndex = 1;
+            });
+          },
+        ),
+      ],
+    ),
+  );
+}
 
-    return InkWell(
-      borderRadius: BorderRadius.circular(14),
+Widget _navItem({
+  required IconData icon,
+  required String label,
+  required int index,
+  required VoidCallback onTap,
+}) {
+  final bool active = _selectedIndex == index;
+
+  if (active) {
+    // donut style for the active item
+    return GestureDetector(
       onTap: onTap,
-      child: Container(
-        padding: const EdgeInsets.only(top: 12),
-        width: 70,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: ShapeDecoration(
-                color: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Container(
+            width: 60,
+            height: 60,
+            decoration: const ShapeDecoration(
+              color: Color(0xCCFFFFFF),
+              shape: CircleBorder(),
+              shadows: [
+                BoxShadow(
+                  color: Color(0x19000000),
+                  blurRadius: 15,
+                  offset: Offset(0, 10),
+                  spreadRadius: -3,
                 ),
+              ],
+            ),
+            child: Container(
+              margin: const EdgeInsets.all(5),
+              decoration: const ShapeDecoration(
+                color: Color(0x89A3E42F),
+                shape: CircleBorder(),
               ),
               child: Icon(
                 icon,
-                size: 24,
-                color: const Color(0x7F192D34),
+                color: const Color(0xFF1A2E35),
               ),
             ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: GoogleFonts.instrumentSans(
-                fontSize: 11,
-                fontWeight: FontWeight.w400,
-                color: const Color(0x7F192D34),
-              ),
-            ),
-          ],
-        ),
+          ),
+        ],
       ),
     );
   }
+
+  // inactive item
+  return InkWell(
+    borderRadius: BorderRadius.circular(14),
+    onTap: onTap,
+    child: Container(
+      padding: const EdgeInsets.only(top: 12),
+      width: 70,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: ShapeDecoration(
+              color: Colors.transparent,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(14),
+              ),
+            ),
+            child: Icon(
+              icon,
+              size: 24,
+              color: const Color(0x7F192D34),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: GoogleFonts.instrumentSans(
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+              color: const Color(0x7F192D34),
+            ),
+          ),
+        ],
+      ),
+    ),
+  );
+}
 }

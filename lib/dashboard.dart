@@ -2,10 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
+
 import 'forum.dart';
-import 'report.dart';
+import 'map.dart';
 import 'profile.dart';
-import 'splash.dart'; 
+import 'report.dart';
+import 'services/sos_service.dart';
+import 'settings.dart';
+import 'splash.dart';
+
 
 class WarningInfo {
   final String title;
@@ -364,8 +369,11 @@ class _DashboardScreenState extends State<DashboardScreen> {
         GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            // TODO: Handle Emergency Button Tap
-            debugPrint("Tombol Darurat Ditekan!");
+            // Panggil layanan SOS ketika tombol darurat ditekan.
+            SOSService.instance.kirimSOS(
+              context: context,
+              lokasiTeks: 'Lokasi tidak spesifik (contoh).',
+            );
           },
           child: Container(
             width: double.infinity,
@@ -599,20 +607,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
           color: const Color(0xFF1A2E35),
           onTap: () {
             HapticFeedback.lightImpact();
-            // TODO: Navigate to Peta Laporan
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const MapScreen(isResponder: false),
+              ),
+            );
           },
         ),
         const SizedBox(height: 8),
-        _buildMenuCard(
-          title: 'Pengaturan',
-          icon: Icons.settings_outlined,
-          iconBgColor: const Color(0x334ADEDE),
-          color: const Color(0xFF1A2E35),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            // TODO: Navigate to Pengaturan
-          },
-        ),
+      _buildMenuCard(
+        title: 'Pengaturan',
+        icon: Icons.settings_outlined,
+        iconBgColor: const Color(0x334ADEDE), 
+        color: const Color(0xFF1A2E35),
+        onTap: () {
+          HapticFeedback.lightImpact();
+          Navigator.of(context).push(
+            MaterialPageRoute(
+              builder: (_) => const SettingsScreen(),
+            ),
+          );
+        },
+      ),
         const SizedBox(height: 8),
         _buildMenuCard(
           title: 'Keluar',

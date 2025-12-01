@@ -1,6 +1,13 @@
 import 'package:flutter/material.dart';
-import 'splash.dart'; 
-void main() {
+
+import 'services/database_service.dart';
+import 'splash.dart';
+
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await DatabaseService.instance.init();
+
   runApp(const MyApp());
 }
 

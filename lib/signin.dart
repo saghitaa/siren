@@ -526,10 +526,10 @@ class _SignInScreenState extends State<SignInScreen> {
     return Container(
       height: 2,
       decoration: BoxDecoration(
-        gradient: LinearGradient(
+        gradient: const LinearGradient(
           colors: [
             Colors.transparent,
-            const Color(0x331A2E35),
+            Color(0x331A2E35),
             Colors.transparent,
           ],
         ),

@@ -429,13 +429,13 @@ class _ResponderProfileScreenState extends State<ResponderProfileScreen> {
                     padding: const EdgeInsets.symmetric(vertical: 4),
                     child: Row(
                       children: [
-                        SizedBox(
+                        const SizedBox(
                           width: 20,
                           height: 20,
                           child: Icon(
                             Icons.shield_outlined,
                             size: 18,
-                            color: const Color(0x99192D34),
+                            color: Color(0x99192D34),
                           ),
                         ),
                         const SizedBox(width: 12),

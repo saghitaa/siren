@@ -10,9 +10,16 @@ dependencies:
   flutter:
     sdk: flutter
   
-  # This package dynamically downloads the fonts
   google_fonts: ^6.2.1 
   cupertino_icons: ^1.0.8
+
+  # === Tambahan untuk fungsionalitas mobile & database lokal (SQLite) ===
+  sqflite: ^2.3.0
+  path_provider: ^2.1.0
+  url_launcher: ^6.3.0
+  audioplayers: ^5.2.0
+  google_maps_flutter: ^2.5.0
+  geocoding: ^2.1.0
 
 dev_dependencies:
   flutter_test:
