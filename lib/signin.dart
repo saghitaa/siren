@@ -149,9 +149,12 @@ class _SignInScreenState extends State<SignInScreen> {
                           borderRadius: BorderRadius.circular(16),
                           child: Padding(
                             padding: const EdgeInsets.all(8.0),
-                            child: Image.network(
-                              "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/aLLDYhj5gp/kk805w1s_expires_30_days.png",
+                            child: Image.asset(
+                              'assets/images/siren.png',
                               fit: BoxFit.contain,
+                              errorBuilder: (context, error, stackTrace) {
+                                return const Icon(Icons.warning, color: Colors.orange);
+                              },
                             ),
                           ),
                         ),

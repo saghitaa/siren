@@ -4,33 +4,13 @@ import 'package:flutter/services.dart';
 import 'dart:ui';
 
 import 'forum.dart';
-import 'map.dart';
+import 'models/report_model.dart';
 import 'profile.dart';
 import 'report.dart';
+import 'services/database_service.dart';
 import 'services/sos_service.dart';
 import 'settings.dart';
 import 'splash.dart';
-
-
-class WarningInfo {
-  final String title;
-  final String description;
-  final String timeAgo;
-  final String distance;
-  final IconData icon;
-  final Color iconBackgroundColor;
-  final Color borderColor;
-
-  WarningInfo({
-    required this.title,
-    required this.description,
-    required this.timeAgo,
-    required this.distance,
-    required this.icon,
-    required this.iconBackgroundColor,
-    required this.borderColor,
-  });
-}
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -40,7 +20,31 @@ class DashboardScreen extends StatefulWidget {
 }
 
 class _DashboardScreenState extends State<DashboardScreen> {
-  final List<WarningInfo> warnings = [];
+  bool _loadingReports = true;
+  List<Report> _reports = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadReports();
+  }
+
+  Future<void> _loadReports() async {
+    final data = await DatabaseService.instance.getAllReports();
+    if (!mounted) return;
+    setState(() {
+      _reports = data;
+      _loadingReports = false;
+    });
+  }
+
+  String _formatTime(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} m lalu';
+    if (diff.inHours < 24) return '${diff.inHours} j lalu';
+    return '${diff.inDays} h lalu';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -102,24 +106,28 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
             // --- MAIN CONTENT (SAFEAREA + MATCHED HEADER SPACING) ---
             SafeArea(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20), // matches ForumScreen
-                      _buildAppBarContent(),
-                      const SizedBox(height: 24),
-                      _buildProfileHeader(),
-                      const SizedBox(height: 24),
-                      _buildEmergencyButton(),
-                      const SizedBox(height: 24),
-                      _buildWarningSection(),
-                      const SizedBox(height: 24),
-                      _buildMenuSection(),
-                      const SizedBox(height: 120),
-                    ],
+              child: RefreshIndicator(
+                onRefresh: _loadReports,
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20), // matches ForumScreen
+                        _buildAppBarContent(),
+                        const SizedBox(height: 24),
+                        _buildProfileHeader(),
+                        const SizedBox(height: 24),
+                        _buildEmergencyButton(),
+                        const SizedBox(height: 24),
+                        _buildWarningSection(),
+                        const SizedBox(height: 24),
+                        _buildMenuSection(),
+                        const SizedBox(height: 120),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -163,9 +171,12 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.all(5.0),
-                  child: Image.network(
-                    "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/aLLDYhj5gp/kk805w1s_expires_30_days.png",
+                  child: Image.asset(
+                    'assets/images/siren.png',
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.warning, color: Colors.orange);
+                    },
                   ),
                 ),
               ),
@@ -370,9 +381,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
           onTap: () {
             HapticFeedback.lightImpact();
             // Panggil layanan SOS ketika tombol darurat ditekan.
-            SOSService.instance.kirimSOS(
+            SOSService.instance.sendSOS(
               context: context,
-              lokasiTeks: 'Lokasi tidak spesifik (contoh).',
+              locationText: 'Lokasi tidak spesifik (contoh).',
             );
           },
           child: Container(
@@ -440,7 +451,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
             Text(
-              '${warnings.length} Laporan',
+              '${_reports.length} Laporan',
               style: GoogleFonts.instrumentSans(
                 color: const Color(0x99192D34),
                 fontSize: 12,
@@ -449,18 +460,23 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ],
         ),
         const SizedBox(height: 12),
-        warnings.isEmpty
-            ? _buildEmptyWarningCard()
-            : ListView.separated(
-                physics: const NeverScrollableScrollPhysics(),
-                shrinkWrap: true,
-                itemCount: warnings.length,
-                separatorBuilder: (context, index) =>
-                    const SizedBox(height: 12),
-                itemBuilder: (context, index) {
-                  return _buildWarningCard(warnings[index]);
-                },
-              ),
+        if (_loadingReports)
+          const Padding(
+            padding: EdgeInsets.symmetric(vertical: 32),
+            child: Center(child: CircularProgressIndicator()),
+          )
+        else if (_reports.isEmpty)
+          _buildEmptyWarningCard()
+        else
+          ListView.separated(
+            physics: const NeverScrollableScrollPhysics(),
+            shrinkWrap: true,
+            itemCount: _reports.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (context, index) {
+              return _buildReportCard(_reports[index]);
+            },
+          ),
       ],
     );
   }
@@ -499,13 +515,18 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  Widget _buildWarningCard(WarningInfo warning) {
+  Widget _buildReportCard(Report report) {
     return Container(
       padding: const EdgeInsets.all(17),
       decoration: ShapeDecoration(
         color: const Color(0xB2FFFFFF),
         shape: RoundedRectangleBorder(
-          side: BorderSide(width: 1.16, color: warning.borderColor),
+          side: BorderSide(
+            width: 1.16,
+            color: report.type == 'SOS'
+                ? const Color(0xFFE7000B)
+                : const Color(0x4C4ADEDE),
+          ),
           borderRadius: BorderRadius.circular(16),
         ),
         shadows: const [
@@ -524,12 +545,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
             width: 40,
             height: 40,
             decoration: ShapeDecoration(
-              color: warning.iconBackgroundColor,
+              color: report.type == 'SOS'
+                  ? const Color(0x19E7000B)
+                  : const Color(0x33A3E42F),
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
-            child: Icon(warning.icon, color: const Color(0xFF1A2E35), size: 20),
+            child: Icon(
+              report.jenis == 'SOS'
+                  ? Icons.sos_rounded
+                  : Icons.warning_amber_rounded,
+              color: const Color(0xFF1A2E35),
+              size: 20,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -540,7 +569,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      warning.title,
+                      report.reportType ?? report.type,
                       style: GoogleFonts.instrumentSans(
                         color: const Color(0xFF1A2E35),
                         fontSize: 14,
@@ -548,7 +577,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                       ),
                     ),
                     Text(
-                      warning.timeAgo,
+                      _formatTime(report.createdAt),
                       style: GoogleFonts.instrumentSans(
                         color: const Color(0x99192D34),
                         fontSize: 11,
@@ -558,7 +587,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  warning.description,
+                  report.description,
                   style: GoogleFonts.instrumentSans(
                     color: const Color(0xB2192D34),
                     fontSize: 12,
@@ -571,7 +600,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: Color(0x99192D34), size: 12),
                     const SizedBox(width: 4),
                     Text(
-                      warning.distance,
+                      report.lat != null && report.lng != null 
+                          ? '${report.lat}, ${report.lng}'
+                          : 'Lokasi tidak disebutkan',
                       style: GoogleFonts.instrumentSans(
                         color: const Color(0x99192D34),
                         fontSize: 11,
@@ -600,21 +631,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(height: 12),
-        _buildMenuCard(
-          title: 'Peta Laporan',
-          icon: Icons.map_outlined,
-          iconBgColor: const Color(0x33A3E42F),
-          color: const Color(0xFF1A2E35),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const MapScreen(isResponder: false),
-              ),
-            );
-          },
-        ),
-        const SizedBox(height: 8),
       _buildMenuCard(
         title: 'Pengaturan',
         icon: Icons.settings_outlined,

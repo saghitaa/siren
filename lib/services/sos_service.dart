@@ -1,54 +1,113 @@
 import 'package:audioplayers/audioplayers.dart';
+import 'package:cloud_functions/cloud_functions.dart';
 import 'package:flutter/material.dart';
-import 'package:url_launcher/url_launcher.dart';
+import 'package:geolocator/geolocator.dart';
 
 import '../models/report_model.dart';
-import 'database_service.dart';
+import 'firestore_service.dart';
+import 'auth_service.dart';
 
-/// Layanan untuk menangani alur SOS pada aplikasi mobile.
-///
-/// Versi ini:
-/// - Menyimpan laporan SOS ke SQLite (tabel `laporan`)
-/// - Memutar suara sirene lokal
-/// - Mencoba membuka WhatsApp ke nomor darurat utama
-/// - Jika WhatsApp tidak tersedia, fallback ke panggilan telepon biasa
+/// Layanan untuk menangani alur SOS sesuai requirements.md.
 class SOSService {
   SOSService._internal();
   static final SOSService instance = SOSService._internal();
 
   final AudioPlayer _audioPlayer = AudioPlayer();
+  final FirebaseFunctions _functions = FirebaseFunctions.instance;
+  String? _currentSOSReportId;
 
-  /// Panggil fungsi ini ketika tombol SOS ditekan di UI.
-  ///
-  /// [nomorDaruratUtama] sebaiknya dalam format internasional, misal: +6281234567890
-  Future<void> kirimSOS({
+  /// Validasi format nomor telepon E.164.
+  bool _isValidPhoneNumber(String phone) {
+    // Format E.164: +[country code][number], minimal 10 digit setelah +
+    final regex = RegExp(r'^\+[1-9]\d{1,14}$');
+    return regex.hasMatch(phone.trim());
+  }
+
+  /// Mengirim SOS sesuai alur requirements.md.
+  Future<void> sendSOS({
     required BuildContext context,
-    String? lokasiTeks,
-    String nomorDaruratUtama = '+6281234567890',
+    String? locationText,
   }) async {
     try {
-      // 1. Simpan laporan SOS ke SQLite
-      final laporan = Report(
-        jenis: 'SOS',
-        judul: 'Laporan Keadaan Darurat',
-        deskripsi: lokasiTeks ?? 'Pengguna menekan tombol SOS.',
-        lokasiTeks: lokasiTeks,
-        latitude: null,
-        longitude: null,
-        dibuatPada: DateTime.now(),
-        status: 'baru',
+      final userId = AuthService.instance.currentUserId;
+      if (userId == null) {
+        throw Exception('User belum login');
+      }
+
+      // 1. Ambil kontak darurat dari profil user
+      final userDoc = await FirestoreService.instance.userDoc(userId).get();
+      if (!userDoc.exists) {
+        throw Exception('Profil user tidak ditemukan');
+      }
+
+      final userData = userDoc.data()!;
+      final contacts = List<String>.from(userData['contacts'] as List? ?? []);
+
+      if (contacts.isEmpty) {
+        throw Exception('Tidak ada kontak darurat. Silakan tambahkan di profil.');
+      }
+
+      // 2. Validasi format nomor
+      final invalidNumbers = <String>[];
+      for (final contact in contacts) {
+        if (!_isValidPhoneNumber(contact)) {
+          invalidNumbers.add(contact);
+        }
+      }
+
+      if (invalidNumbers.isNotEmpty) {
+        throw Exception(
+          'Nomor tidak valid: ${invalidNumbers.join(', ')}. '
+          'Format harus E.164 (contoh: +6281234567890).',
+        );
+      }
+
+      // 3. Ambil lokasi GPS (opsional)
+      double? lat;
+      double? lng;
+      try {
+        final position = await Geolocator.getCurrentPosition(
+          desiredAccuracy: LocationAccuracy.high,
+        );
+        lat = position.latitude;
+        lng = position.longitude;
+      } catch (_) {
+        // Lokasi tidak wajib, lanjut tanpa koordinat
+      }
+
+      // 4. Ambil nama user
+      final userName = userData['displayName'] as String? ?? 'Pengguna';
+
+      // 5. Buat report SOS dengan status 'SOS_SENT'
+      final report = Report(
+        type: 'SOS',
+        userId: userId,
+        userName: userName,
+        description: locationText ?? 'Pengguna menekan tombol SOS.',
+        lat: lat,
+        lng: lng,
+        reportType: 'SOS',
+        status: 'SOS_SENT',
+        createdAt: DateTime.now(),
       );
 
-      await DatabaseService.instance.insertReport(laporan);
+      final docRef = await FirestoreService.instance.reports.add(report.toFirestore());
+      _currentSOSReportId = docRef.id;
 
-      // 2. Mulai memutar suara sirene
+      // 6. Putar sirene lokal (loop)
       await _putarSirene();
 
-      // 3. Tampilkan dialog konfirmasi + opsi batal
-      //    Sambil mencoba membuka WhatsApp / telepon di belakang.
-      //    (User masih melihat dialog di aplikasi.)
-      _bukaKontakDarurat(nomorDaruratUtama);
+      // 7. Panggil Cloud Function sendSOS untuk SMS + FCM
+      try {
+        await _functions.httpsCallable('sendSOS').call({
+          'reportId': docRef.id,
+        });
+      } catch (e) {
+        // Log error tapi jangan gagalkan alur
+        debugPrint('Error calling sendSOS function: $e');
+      }
 
+      // 8. Tampilkan dialog dengan opsi cancel
       if (!context.mounted) return;
 
       await showDialog<void>(
@@ -67,17 +126,18 @@ class SOSService {
             ),
             content: const Text(
               'Sinyal darurat sedang diproses.\n'
-              'Aplikasi juga mencoba menghubungi kontak darurat Anda.',
+              'SMS telah dikirim ke kontak darurat Anda.\n'
+              'Responder menerima notifikasi.',
             ),
             actions: [
               TextButton(
                 onPressed: () async {
-                  await _hentikanSirene();
+                  await cancelSOS(context: ctx);
                   if (ctx.mounted) {
                     Navigator.of(ctx).pop();
                   }
                 },
-                child: const Text('Hentikan Sirene'),
+                child: const Text('Batalkan SOS'),
               ),
             ],
           );
@@ -97,19 +157,48 @@ class SOSService {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text('Gagal mengirim SOS: $e'),
+            backgroundColor: Colors.red,
           ),
         );
       }
     }
   }
 
+  /// Membatalkan SOS: stop sirene, update status, kirim STOP_SIREN.
+  Future<void> cancelSOS({required BuildContext context}) async {
+    try {
+      await _hentikanSirene();
+
+      if (_currentSOSReportId != null) {
+        // Update status ke 'cancelled'
+        await FirestoreService.instance.reportDoc(_currentSOSReportId!).update({
+          'status': 'cancelled',
+        });
+
+        // Kirim FCM STOP_SIREN via Cloud Function (opsional, bisa langsung dari sini)
+        try {
+          await _functions.httpsCallable('stopSiren').call({
+            'reportId': _currentSOSReportId,
+          });
+        } catch (_) {
+          // Ignore error
+        }
+      }
+
+      _currentSOSReportId = null;
+    } catch (e) {
+      debugPrint('Error canceling SOS: $e');
+    }
+  }
+
   Future<void> _putarSirene() async {
     try {
       await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource('siren.mp3'), volume: 1.0);
+      await _audioPlayer.play(AssetSource('sos siren.mp3'), volume: 1.0);
       _audioPlayer.setReleaseMode(ReleaseMode.loop);
     } catch (_) {
       // Jika gagal memutar audio, biarkan saja tanpa crash
+      debugPrint('Gagal memutar sirene (file mungkin belum ada)');
     }
   }
 
@@ -121,32 +210,8 @@ class SOSService {
     }
   }
 
-  Future<void> _bukaKontakDarurat(String nomorDaruratUtama) async {
-    final nomorTanpaPlus = nomorDaruratUtama.replaceAll('+', '').trim();
-
-    // Coba buka WhatsApp terlebih dahulu
-    final waUri =
-        Uri.parse('https://wa.me/$nomorTanpaPlus?text=Darurat%20saya%20butuh%20bantuan');
-
-    try {
-      if (await canLaunchUrl(waUri)) {
-        await launchUrl(waUri, mode: LaunchMode.externalApplication);
-        return;
-      }
-    } catch (_) {
-      // lanjut ke fallback telepon
-    }
-
-    // Fallback ke telepon biasa
-    final telUri = Uri.parse('tel:$nomorDaruratUtama');
-    try {
-      if (await canLaunchUrl(telUri)) {
-        await launchUrl(telUri);
-      }
-    } catch (_) {
-      // jika gagal juga, tidak ada yang bisa kita lakukan di sisi aplikasi
-    }
+  /// Stop sirene (untuk dipanggil dari FCM service saat menerima STOP_SIREN).
+  void stopSiren() {
+    _hentikanSirene();
   }
 }
-
-

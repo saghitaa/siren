@@ -2,8 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'dashboard.dart';
+import 'models/forum_post_model.dart';
 import 'report.dart';
 import 'responder_dashboard.dart';
+import 'services/forum_service.dart';
+import 'services/auth_service.dart';
 
 class ForumScreen extends StatefulWidget {
   final bool isResponder;
@@ -19,7 +22,15 @@ class ForumScreen extends StatefulWidget {
 
 class _ForumScreenState extends State<ForumScreen> {
   final TextEditingController _postController = TextEditingController();
-  final List<Map<String, dynamic>> _posts = [];
+  final ForumService _forumService = ForumService.instance;
+  bool _isLoading = true;
+  List<ForumPost> _posts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadPosts();
+  }
 
   @override
   void dispose() {
@@ -27,23 +38,65 @@ class _ForumScreenState extends State<ForumScreen> {
     super.dispose();
   }
 
-void _handlePost() {
-  if (_postController.text.trim().isEmpty) return;
-
-  setState(() {
-    _posts.insert(0, {
-      'name': 'Nama Pengguna',
-      'time': 'Baru saja',
-      'role': widget.isResponder ? 'Responder' : 'Warga', 
-      'content': _postController.text.trim(),
-      'replies': 0,
-      'likes': 0,
-      'profileImageUrl': null,
+  void _loadPosts() {
+    _forumService.getAllPosts().listen((posts) {
+      if (!mounted) return;
+      setState(() {
+        _posts = posts;
+        _isLoading = false;
+      });
     });
-    _postController.clear();
-    FocusScope.of(context).unfocus();
-  });
-}
+  }
+
+  Future<void> _handlePost() async {
+    final text = _postController.text.trim();
+    if (text.isEmpty) return;
+
+    try {
+      // Ambil nama user dari auth
+      final userId = AuthService.instance.currentUserId;
+      String userName = widget.isResponder ? 'Responder' : 'Warga';
+      
+      if (userId != null) {
+        final user = await AuthService.instance.getUserData(userId);
+        if (user != null) {
+          userName = user.displayName;
+        }
+      }
+
+      await _forumService.createPost(
+        content: text,
+        name: userName,
+        role: widget.isResponder ? 'Responder' : 'Warga',
+      );
+
+      if (!mounted) return;
+      _postController.clear();
+      FocusScope.of(context).unfocus();
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Posting berhasil dikirim.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengirim posting: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
+  String _formatTime(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} m lalu';
+    if (diff.inHours < 24) return '${diff.inHours} j lalu';
+    return '${diff.inDays} h lalu';
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -115,22 +168,19 @@ void _handlePost() {
                       const SizedBox(height: 24),
                       _buildCreatePostCard(),
                       const SizedBox(height: 24),
-                      ..._posts.map(
-                        (post) => Column(
-                          children: [
-                            _buildForumPost(
-                              name: post['name'],
-                              time: post['time'],
-                              role: post['role'],
-                              content: post['content'],
-                              replies: post['replies'],
-                              likes: post['likes'],
-                              profileImageUrl: post['profileImageUrl'],
-                            ),
-                            const SizedBox(height: 16),
-                          ],
+                      if (_isLoading)
+                        const Center(child: CircularProgressIndicator())
+                      else if (_posts.isEmpty)
+                        _buildEmptyForumCard()
+                      else
+                        ..._posts.map(
+                          (post) => Column(
+                            children: [
+                              _buildForumPost(post),
+                              const SizedBox(height: 16),
+                            ],
+                          ),
                         ),
-                      ),
                       const SizedBox(height: 120),
                     ],
                   ),
@@ -175,9 +225,12 @@ void _handlePost() {
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.all(5.0),
-                  child: Image.network(
-                    'https://storage.googleapis.com/tagjs-prod.appspot.com/v1/aLLDYhj5gp/kk805w1s_expires_30_days.png',
+                  child: Image.asset(
+                    'assets/images/siren.png',
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.warning, color: Colors.orange);
+                    },
                   ),
                 ),
               ),
@@ -382,15 +435,31 @@ void _handlePost() {
     );
   }
 
-  Widget _buildForumPost({
-    required String name,
-    required String time,
-    required String role,
-    required String content,
-    required int replies,
-    required int likes,
-    String? profileImageUrl,
-  }) {
+  Widget _buildEmptyForumCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: ShapeDecoration(
+        color: Colors.white.withValues(alpha: 0.70),
+        shape: RoundedRectangleBorder(
+          side: const BorderSide(width: 1.16, color: Color(0x334ADEDE)),
+          borderRadius: BorderRadius.circular(16),
+        ),
+      ),
+      child: Center(
+        child: Text(
+          'Belum ada kiriman.\nJadilah yang pertama untuk berbagi informasi!',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.instrumentSans(
+            color: const Color(0x99192D34),
+            fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildForumPost(ForumPost post) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: ShapeDecoration(
@@ -429,15 +498,10 @@ void _handlePost() {
                 ),
                 child: ClipRRect(
                   borderRadius: BorderRadius.circular(14),
-                  child: profileImageUrl != null
-                      ? Image.network(
-                          profileImageUrl,
-                          fit: BoxFit.cover,
-                        )
-                      : const Icon(
-                          Icons.person,
-                          color: Color(0x99192D34),
-                        ),
+                child: const Icon(
+                  Icons.person,
+                  color: Color(0x99192D34),
+                ),
                 ),
               ),
               const SizedBox(width: 12),
@@ -449,7 +513,7 @@ void _handlePost() {
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         Text(
-                          name,
+                          post.name,
                           style: GoogleFonts.instrumentSans(
                             color: const Color(0xFF1A2E35),
                             fontSize: 14,
@@ -457,7 +521,7 @@ void _handlePost() {
                           ),
                         ),
                         Text(
-                          time,
+                          _formatTime(post.createdAt),
                           style: GoogleFonts.instrumentSans(
                             color: const Color(0x99192D34),
                             fontSize: 11,
@@ -466,7 +530,7 @@ void _handlePost() {
                       ],
                     ),
                     Text(
-                      role,
+                      post.role,
                       style: GoogleFonts.instrumentSans(
                         color: const Color(0x7F192D34),
                         fontSize: 11,
@@ -479,7 +543,7 @@ void _handlePost() {
           ),
           const SizedBox(height: 12),
           Text(
-            content,
+            post.content,
             style: GoogleFonts.instrumentSans(
               color: const Color(0xCC1A2E35),
               fontSize: 13,
@@ -496,7 +560,7 @@ void _handlePost() {
               ),
               const SizedBox(width: 6),
               Text(
-                '$likes',
+                '0',
                 style: GoogleFonts.instrumentSans(
                   color: const Color(0x99192D34),
                   fontSize: 12,
@@ -510,7 +574,7 @@ void _handlePost() {
               ),
               const SizedBox(width: 6),
               Text(
-                '$replies replies',
+                '${post.repliesCount} balasan',
                 style: GoogleFonts.instrumentSans(
                   color: const Color(0x99192D34),
                   fontSize: 12,

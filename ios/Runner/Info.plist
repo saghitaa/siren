@@ -45,5 +45,15 @@
 	<true/>
 	<key>UIApplicationSupportsIndirectInputEvents</key>
 	<true/>
+	<!-- Permissions untuk lokasi (wajib untuk fitur peta & drop pin) -->
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Aplikasi membutuhkan akses lokasi untuk menampilkan peta laporan dan mendapatkan alamat saat Anda memilih titik di peta.</string>
+	<key>NSLocationAlwaysUsageDescription</key>
+	<string>Aplikasi membutuhkan akses lokasi untuk fitur peta dan laporan darurat.</string>
+	<!-- Permissions untuk kamera & galeri (opsional, untuk fitur upload foto nanti) -->
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Aplikasi membutuhkan akses galeri untuk mengunggah foto ke laporan.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Aplikasi membutuhkan akses kamera untuk mengambil foto langsung ke laporan.</string>
 </dict>
 </plist>

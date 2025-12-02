@@ -3,8 +3,10 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
 import 'forum.dart';
-import 'map.dart';
+import 'models/report_model.dart';
 import 'responder_profile.dart';
+import 'services/report_service.dart';
+import 'services/fcm_service.dart';
 import 'settings.dart';
 import 'splash.dart';
 
@@ -20,33 +22,58 @@ class ResponderDashboardScreen extends StatefulWidget {
 class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
   int _selectedIndex = 1; // 0 = Forum, 1 = Dashboard
   int _availabilityIndex = 0;
+  bool _loadingReports = true;
+  int _lastReportCount = 0;
+  List<Report> _reports = [];
+  final ReportService _reportService = ReportService.instance;
 
-  final List<Map<String, dynamic>> _incidents = [
-    {
-      "title": "Kebakaran Rumah",
-      "description": "Api membesar di rumah warga, butuh bantuan segera",
-      "distance": "1.2 km",
-      "time": "3m lalu",
-      "severity": "Tinggi",
-      "color": const Color(0xFFE7000B),
-    },
-    {
-      "title": "Banjir Mendadak",
-      "description": "Ketinggian air mencapai 50cm, warga memerlukan evakuasi",
-      "distance": "2.8 km",
-      "time": "8m lalu",
-      "severity": "Tinggi",
-      "color": const Color(0xFF007AFF),
-    },
-    {
-      "title": "Kecelakaan Lalu Lintas",
-      "description": "Tabrakan 2 kendaraan di persimpangan",
-      "distance": "4.1 km",
-      "time": "15m lalu",
-      "severity": "Sedang",
-      "color": const Color(0xFFFFB400),
-    },
-  ];
+  @override
+  void initState() {
+    super.initState();
+    _loadReports();
+  }
+
+  void _loadReports() {
+    _reportService.getAllReports().listen((reports) {
+      if (!mounted) return;
+
+      final newCount = reports.length;
+      if (newCount > _lastReportCount && _lastReportCount > 0) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Ada laporan baru untuk responder. Segera cek!'),
+          ),
+        );
+      }
+
+      setState(() {
+        _reports = reports;
+        _loadingReports = false;
+        _lastReportCount = newCount;
+      });
+    });
+  }
+
+  String _formatTime(DateTime date) {
+    final diff = DateTime.now().difference(date);
+    if (diff.inMinutes < 1) return 'Baru saja';
+    if (diff.inMinutes < 60) return '${diff.inMinutes} m lalu';
+    if (diff.inHours < 24) return '${diff.inHours} j lalu';
+    return '${diff.inDays} h lalu';
+  }
+
+  Color _accentColor(String jenis) {
+    switch (jenis.toLowerCase()) {
+      case 'sos':
+        return const Color(0xFFE7000B);
+      case 'banjir':
+        return const Color(0xFF007AFF);
+      case 'kebakaran':
+        return const Color(0xFFFF7043);
+      default:
+        return const Color(0xFF28CFD7);
+    }
+  }
 
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -112,36 +139,53 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
               ),
             ),
             SafeArea(
-              child: SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 24),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const SizedBox(height: 20),
+              child: RefreshIndicator(
+                onRefresh: () async {
+                  // Reload reports
+                  _lastReportCount = 0;
+                },
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  padding: const EdgeInsets.symmetric(horizontal: 24),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const SizedBox(height: 20),
 
-                    // 1. PROFILE CARD
-                    _headerCard(context),
-                    const SizedBox(height: 20),
+                      // 1. PROFILE CARD
+                      _headerCard(context),
+                      const SizedBox(height: 20),
 
-                    // 2. LAPORAN DARURAT
-                    _incidentHeader(),
-                    const SizedBox(height: 12),
-                    ..._incidents.map(
-                      (data) => Padding(
-                        padding: const EdgeInsets.only(bottom: 12),
-                        child: _incidentCard(data),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
+                      // 2. LAPORAN DARURAT
+                      _incidentHeader(),
+                      const SizedBox(height: 12),
+                      if (_loadingReports)
+                        const Center(
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(vertical: 32),
+                            child: CircularProgressIndicator(),
+                          ),
+                        )
+                      else if (_reports.isEmpty)
+                        _buildEmptyIncidentCard()
+                      else
+                        ..._reports.map(
+                          (report) => Padding(
+                            padding: const EdgeInsets.only(bottom: 12),
+                            child: _incidentCard(report),
+                          ),
+                        ),
+                      const SizedBox(height: 20),
 
-                    // 3. AVAILABILITY STATUS
-                    _availabilityCard(),
-                    const SizedBox(height: 20),
+                      // 3. AVAILABILITY STATUS
+                      _availabilityCard(),
+                      const SizedBox(height: 20),
 
-                    // 4. MENU (LAST)
-                    _menuSection(),
-                    const SizedBox(height: 120),
-                  ],
+                      // 4. MENU (LAST)
+                      _menuSection(),
+                      const SizedBox(height: 120),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -192,9 +236,12 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                 ),
                 child: Padding(
                   padding: const EdgeInsets.all(6),
-                  child: Image.network(
-                    "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/aLLDYhj5gp/kk805w1s_expires_30_days.png",
+                  child: Image.asset(
+                    'assets/images/siren.png',
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.warning, color: Colors.orange);
+                    },
                   ),
                 ),
               ),
@@ -412,7 +459,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                   decoration: ShapeDecoration(
                     color: active
                         ? const Color(0xFF28CFD7)
-                        : Colors.white.withOpacity(0.95),
+                        : Colors.white.withValues(alpha: 0.95),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(999),
                       side: BorderSide(
@@ -469,20 +516,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
             ),
           ),
           const SizedBox(height: 12),
-          _menuCard(
-            icon: Icons.map_outlined,
-            title: 'Peta Laporan',
-            color: const Color(0xFF1A2E35),
-            iconBg: const Color(0x33A3E42F),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const MapScreen(isResponder: true),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
           _menuCard(
             icon: Icons.settings_outlined,
             title: 'Pengaturan',
@@ -587,7 +620,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
           ),
         ),
         Text(
-          '${_incidents.length} Laporan',
+          '${_reports.length} Laporan',
           style: GoogleFonts.instrumentSans(
             fontSize: 11,
             color: const Color(0x99192D34),
@@ -597,9 +630,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  Widget _incidentCard(Map<String, dynamic> data) {
-    final Color accent = data["color"] as Color;
-    final String severity = data["severity"] as String;
+  Widget _incidentCard(Report report) {
+    final Color accent = _accentColor(report.type);
 
     return Container(
       padding: const EdgeInsets.all(16),
@@ -609,7 +641,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
             width: 1.16,
-            color: accent.withOpacity(0.4),
+            color: accent.withValues(alpha: 0.4),
           ),
         ),
         shadows: const [
@@ -625,12 +657,17 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
         children: [
           Row(
             children: [
-              Icon(Icons.local_fire_department_rounded,
-                  size: 18, color: accent),
+              Icon(
+                report.type == 'SOS'
+                    ? Icons.sos_rounded
+                    : Icons.local_fire_department_rounded,
+                size: 18,
+                color: accent,
+              ),
               const SizedBox(width: 8),
               Expanded(
                 child: Text(
-                  data["title"] as String,
+                  report.reportType ?? report.type,
                   style: GoogleFonts.instrumentSans(
                     fontSize: 14,
                     fontWeight: FontWeight.w600,
@@ -642,13 +679,13 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                 padding:
                     const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
                 decoration: ShapeDecoration(
-                  color: accent.withOpacity(0.12),
+                  color: accent.withValues(alpha: 0.12),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
                 child: Text(
-                  severity,
+                  report.type,
                   style: GoogleFonts.instrumentSans(
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -660,7 +697,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            data["description"] as String,
+            report.description,
             style: GoogleFonts.instrumentSans(
               fontSize: 12,
               color: const Color(0xB2192D34),
@@ -673,7 +710,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                   size: 13, color: Color(0x99192D34)),
               const SizedBox(width: 4),
               Text(
-                data["distance"] as String,
+                report.lat != null && report.lng != null 
+                    ? '${report.lat}, ${report.lng}'
+                    : 'Lokasi tidak disebutkan',
                 style: GoogleFonts.instrumentSans(
                   fontSize: 11,
                   color: const Color(0x99192D34),
@@ -684,7 +723,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                   size: 13, color: Color(0x99192D34)),
               const SizedBox(width: 4),
               Text(
-                data["time"] as String,
+                _formatTime(report.createdAt),
                 style: GoogleFonts.instrumentSans(
                   fontSize: 11,
                   color: const Color(0x99192D34),
@@ -708,7 +747,10 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                 label: 'Navigasi',
                 textColor: const Color(0xFF1A2E35),
                 borderColor: const Color(0xFF28CFD7),
-                onTap: () => _showSnack('Membuka navigasi...'),
+                onTap: () => _showSnack(
+                    report.lat != null && report.lng != null 
+                        ? 'Membuka navigasi ke ${report.lat}, ${report.lng}'
+                        : 'Lokasi tidak tersedia'),
               ),
               const SizedBox(width: 8),
               _incidentActionButton(
@@ -717,11 +759,36 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                 textColor: Colors.white,
                 borderColor: accent,
                 fillColor: accent,
-                onTap: () => _showSnack('Laporan diterima.'),
+                onTap: () => _showSnack(
+                    'Laporan "${report.reportType ?? report.type}" ditandai sebagai diterima.'),
               ),
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildEmptyIncidentCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: ShapeDecoration(
+        color: const Color(0xB2FFFFFF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)),
+        ),
+      ),
+      child: Center(
+        child: Text(
+          'Belum ada laporan masuk.\nTarik ke bawah untuk memuat ulang.',
+          textAlign: TextAlign.center,
+          style: GoogleFonts.instrumentSans(
+            color: const Color(0x99192D34),
+            fontSize: 14,
+          ),
+        ),
       ),
     );
   }

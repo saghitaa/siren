@@ -2,8 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
 import 'dart:ui';
+
 import 'dashboard.dart';
 import 'forum.dart';
+import 'services/report_service.dart';
 
 class ReportScreen extends StatefulWidget {
   const ReportScreen({super.key});
@@ -15,7 +17,9 @@ class ReportScreen extends StatefulWidget {
 class _ReportScreenState extends State<ReportScreen> {
   final TextEditingController _locationController = TextEditingController();
   final TextEditingController _descriptionController = TextEditingController();
+  final ReportService _reportService = ReportService.instance;
   String? _selectedReportType;
+  bool _isSubmitting = false;
 
   final List<String> _reportTypes = [
     'Banjir',
@@ -143,9 +147,12 @@ class _ReportScreenState extends State<ReportScreen> {
                 borderRadius: BorderRadius.circular(16),
                 child: Padding(
                   padding: const EdgeInsets.all(5.0),
-                  child: Image.network(
-                    "https://storage.googleapis.com/tagjs-prod.appspot.com/v1/aLLDYhj5gp/kk805w1s_expires_30_days.png",
+                  child: Image.asset(
+                    'assets/images/siren.png',
                     fit: BoxFit.contain,
+                    errorBuilder: (context, error, stackTrace) {
+                      return const Icon(Icons.warning, color: Colors.orange);
+                    },
                   ),
                 ),
               ),
@@ -350,12 +357,7 @@ class _ReportScreenState extends State<ReportScreen> {
           const SizedBox(height: 24),
 
           InkWell(
-            onTap: () {
-              HapticFeedback.lightImpact();
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Laporan dikirim!')),
-              );
-            },
+            onTap: _isSubmitting ? null : _submitReport,
             borderRadius: BorderRadius.circular(16),
             child: Container(
               width: double.infinity,
@@ -379,14 +381,23 @@ class _ReportScreenState extends State<ReportScreen> {
                 ],
               ),
               child: Center(
-                child: Text(
-                  'Buat Laporan',
-                  style: GoogleFonts.instrumentSans(
-                    color: Colors.white,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                child: _isSubmitting
+                    ? const SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2,
+                          valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                        ),
+                      )
+                    : Text(
+                        'Buat Laporan',
+                        style: GoogleFonts.instrumentSans(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
               ),
             ),
           ),
@@ -622,5 +633,55 @@ class _ReportScreenState extends State<ReportScreen> {
         ),
       ),
     );
+  }
+
+  Future<void> _submitReport() async {
+    if (_selectedReportType == null ||
+        _locationController.text.trim().isEmpty ||
+        _descriptionController.text.trim().isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Lengkapi jenis laporan, lokasi, dan deskripsi terlebih dahulu.'),
+        ),
+      );
+      return;
+    }
+
+    HapticFeedback.lightImpact();
+    setState(() => _isSubmitting = true);
+
+    try {
+      await _reportService.createReport(
+        reportType: _selectedReportType!,
+        description: _descriptionController.text.trim(),
+        locationText: _locationController.text.trim(),
+        lat: null, // TODO: integrate dengan GPS jika perlu
+        lng: null,
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isSubmitting = false;
+        _selectedReportType = null;
+      });
+      _locationController.clear();
+      _descriptionController.clear();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Laporan berhasil dikirim. Responder menerima notifikasi tugas baru.'),
+        ),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isSubmitting = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Gagal mengirim laporan: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 }

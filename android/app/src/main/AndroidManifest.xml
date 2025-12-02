@@ -2,15 +2,16 @@
 
     <!-- Izin dasar agar peta & jaringan berfungsi dengan baik di Android -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- Izin untuk mendapatkan lokasi GPS -->
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
+    <!-- Izin untuk panggilan telepon (fallback saat WhatsApp tidak tersedia) -->
+    <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
         android:label="siren_application"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
-        <!-- API Key Google Maps: ganti nilai ini dengan API key milikmu sendiri -->
-        <meta-data
-            android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_GOOGLE_MAPS_API_KEY_HERE" />
         <activity
             android:name=".MainActivity"
             android:exported="true"
