@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'login.dart';
 import 'signin_loading.dart';
+import 'services/auth_service.dart'; // <--- THIS WAS MISSING
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -229,7 +230,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         onToggleVisibility: () {
                           setState(() {
                             _isConfirmPasswordObscured =
-                                !_isConfirmPasswordObscured;
+                            !_isConfirmPasswordObscured;
                           });
                         },
                       ),
@@ -237,27 +238,48 @@ class _SignInScreenState extends State<SignInScreen> {
                       // --- FIXED BUTTON ---
                       GestureDetector(
                         onTap: _isButtonEnabled
-                            ? () {
-                                // TODO: Handle sign-up logic
-                                Navigator.of(context).pushReplacement(
-                                  PageRouteBuilder(
-                                    pageBuilder: (context, animation,
-                                            secondaryAnimation) =>
-                                        const SignInLoadingScreen(),
-                                    transitionsBuilder: (context, animation,
-                                        secondaryAnimation, child) {
-                                      return FadeTransition(
-                                        opacity: animation.drive(
-                                            CurveTween(curve: Curves.easeIn)),
-                                        child: child,
-                                      );
-                                    },
-                                    transitionDuration:
-                                        const Duration(milliseconds: 300),
-                                  ),
-                                );
-                              }
-                            : null, // Makes it unclickable
+                            ? () async {
+                          // 1. Tampilkan loading
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(content: Text('Mendaftarkan akun...')),
+                          );
+
+                          // 2. Panggil AuthService untuk simpan ke SQLite
+                          final bool success = await AuthService.instance.signUpWithEmail(
+                            email: _emailController.text.trim(),
+                            password: _passwordController.text.trim(),
+                            name: _nameController.text.trim(),
+                            phone: "081234567890",
+                            role: "warga",
+                          );
+
+                          if (!context.mounted) return;
+
+                          if (success) {
+                            // 3. Jika Sukses, Navigasi ke Loading
+                            Navigator.of(context).pushReplacement(
+                              PageRouteBuilder(
+                                pageBuilder: (context, animation, secondaryAnimation) =>
+                                const SignInLoadingScreen(),
+                                transitionsBuilder: (context, animation, secondaryAnimation, child) {
+                                  return FadeTransition(
+                                    opacity: animation.drive(CurveTween(curve: Curves.easeIn)),
+                                    child: child,
+                                  );
+                                },
+                              ),
+                            );
+                          } else {
+                            // 4. Jika Gagal
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              const SnackBar(
+                                content: Text('Gagal mendaftar. Email mungkin sudah terpakai.'),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                            : null,
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 13),
@@ -266,23 +288,23 @@ class _SignInScreenState extends State<SignInScreen> {
                             gradient: LinearGradient(
                               colors: _isButtonEnabled
                                   ? [
-                                      const Color(0xE5B3FFD5),
-                                      const Color(0xE528CFD8)
-                                    ]
+                                const Color(0xE5B3FFD5),
+                                const Color(0xE528CFD8)
+                              ]
                                   : [
-                                      const Color(0xFFB0B0B0),
-                                      const Color(0xFF909090)
-                                    ],
+                                const Color(0xFFB0B0B0),
+                                const Color(0xFF909090)
+                              ],
                             ),
                             boxShadow: _isButtonEnabled
                                 ? const [
-                                    BoxShadow(
-                                      color: Color(0x19000000),
-                                      blurRadius: 15,
-                                      offset: Offset(0, 10),
-                                      spreadRadius: -3,
-                                    ),
-                                  ]
+                              BoxShadow(
+                                color: Color(0x19000000),
+                                blurRadius: 15,
+                                offset: Offset(0, 10),
+                                spreadRadius: -3,
+                              ),
+                            ]
                                 : null,
                           ),
                           child: Text(
@@ -304,7 +326,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           Expanded(child: _buildDivider()),
                           Padding(
                             padding:
-                                const EdgeInsets.symmetric(horizontal: 12.0),
+                            const EdgeInsets.symmetric(horizontal: 12.0),
                             child: Text(
                               "ATAU",
                               style: GoogleFonts.instrumentSans(
@@ -323,7 +345,7 @@ class _SignInScreenState extends State<SignInScreen> {
                             PageRouteBuilder(
                               pageBuilder:
                                   (context, animation, secondaryAnimation) =>
-                                      const LoginScreen(),
+                              const LoginScreen(),
                               transitionsBuilder: (context, animation,
                                   secondaryAnimation, child) {
                                 return FadeTransition(
@@ -333,7 +355,7 @@ class _SignInScreenState extends State<SignInScreen> {
                                 );
                               },
                               transitionDuration:
-                                  const Duration(milliseconds: 300),
+                              const Duration(milliseconds: 300),
                             ),
                           );
                         },
@@ -431,17 +453,17 @@ class _SignInScreenState extends State<SignInScreen> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: Color(0x334ADEDE), width: 1.16),
+              const BorderSide(color: Color(0x334ADEDE), width: 1.16),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: Color(0x334ADEDE), width: 1.16),
+              const BorderSide(color: Color(0x334ADEDE), width: 1.16),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: Color(0xFF4ADEDE), width: 1.5),
+              const BorderSide(color: Color(0xFF4ADEDE), width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),
@@ -486,11 +508,9 @@ class _SignInScreenState extends State<SignInScreen> {
               fontSize: 16,
             ),
             helperText: helperText,
-            // --- FIXED FONT ---
             helperStyle: GoogleFonts.instrumentSans(color: const Color(0x99192D34)),
             errorText: errorText,
             errorStyle: GoogleFonts.instrumentSans(color: Colors.red.shade700),
-            // --- END FIXED FONT ---
             prefixIcon: const Icon(Icons.lock_outline_rounded,
                 color: Color(0x99192D34), size: 20),
             suffixIcon: IconButton(
@@ -505,17 +525,17 @@ class _SignInScreenState extends State<SignInScreen> {
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: Color(0x334ADEDE), width: 1.16),
+              const BorderSide(color: Color(0x334ADEDE), width: 1.16),
             ),
             enabledBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: Color(0x334ADEDE), width: 1.16),
+              const BorderSide(color: Color(0x334ADEDE), width: 1.16),
             ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(16),
               borderSide:
-                  const BorderSide(color: Color(0xFF4ADEDE), width: 1.5),
+              const BorderSide(color: Color(0xFF4ADEDE), width: 1.5),
             ),
             contentPadding: const EdgeInsets.symmetric(vertical: 14),
           ),

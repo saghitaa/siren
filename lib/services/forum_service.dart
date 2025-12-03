@@ -1,24 +1,19 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
-
 import '../models/forum_post_model.dart';
-import 'firestore_service.dart';
+import 'database_service.dart';
 import 'auth_service.dart';
 
-/// Service untuk operasi forum (post & reply).
+/// Service untuk operasi forum (SQLite Version).
 class ForumService {
   ForumService._internal();
   static final ForumService instance = ForumService._internal();
 
   /// Membuat posting baru di forum.
-  Future<String> createPost({
+  Future<int> createPost({
     required String content,
     required String name,
     required String role, // 'Warga' atau 'Responder'
   }) async {
-    final userId = AuthService.instance.currentUserId;
-    if (userId == null) {
-      throw Exception('User belum login');
-    }
+    final userId = AuthService.instance.currentUser?.id ?? 'unknown';
 
     final post = ForumPost(
       userId: userId,
@@ -29,33 +24,18 @@ class ForumService {
       createdAt: DateTime.now(),
     );
 
-    final docRef = await FirestoreService.instance.forumPosts.add(post.toFirestore());
-    return docRef.id;
+    return await DatabaseService.instance.insertForumPost(post);
   }
 
-  /// Stream semua posting forum (urut terbaru).
-  Stream<List<ForumPost>> getAllPosts() {
-    return FirestoreService.instance.forumPosts
-        .orderBy('createdAt', descending: true)
-        .snapshots()
-        .map((snapshot) => snapshot.docs
-            .map((doc) => ForumPost.fromFirestore(doc))
-            .toList());
+  /// Get semua posting forum (Future, bukan Stream).
+  Future<List<ForumPost>> getAllPosts() async {
+    return await DatabaseService.instance.getAllForumPosts();
   }
 
-  /// Menambah reply ke posting (opsional - bisa diimplementasi nanti).
+  /// Menambah reply ke posting (Simulasi).
   Future<void> createReply(String postId, String replyContent) async {
-    final userId = AuthService.instance.currentUserId;
-    if (userId == null) {
-      throw Exception('User belum login');
-    }
-
-    // Update repliesCount
-    await FirestoreService.instance.forumPostDoc(postId).update({
-      'repliesCount': FieldValue.increment(1),
-    });
-
-    // TODO: Bisa tambahkan subcollection 'replies' jika perlu detail reply
+    // TODO: Implementasi tabel 'replies' di SQLite
+    // Untuk sekarang update jumlah balasan saja di mock/UI
+    print('Reply to post $postId: $replyContent');
   }
 }
-

@@ -1,7 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-/// Model laporan darurat / umum yang disimpan di Firestore.
+/// Model laporan darurat / umum yang disimpan di SQLite.
 @immutable
 class Report {
   final String? id;
@@ -36,7 +35,7 @@ class Report {
     this.responseMessage,
   });
 
-String get jenis => reportType ?? 'Tidak diketahui';
+  String get jenis => reportType ?? 'Tidak diketahui';
 
   Report copyWith({
     String? id,
@@ -72,59 +71,37 @@ String get jenis => reportType ?? 'Tidak diketahui';
     );
   }
 
-  factory Report.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
-    return Report(
-      id: doc.id,
-      type: data['type'] as String? ?? 'regular',
-      userId: data['userId'] as String,
-      userName: data['userName'] as String,
-      description: data['description'] as String,
-      lat: (data['lat'] as num?)?.toDouble(),
-      lng: (data['lng'] as num?)?.toDouble(),
-      reportType: data['reportType'] as String?,
-      status: data['status'] as String,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-      respondedAt: data['respondedAt'] != null
-          ? (data['respondedAt'] as Timestamp).toDate()
-          : null,
-      responderId: data['responderId'] as String?,
-      responderName: data['responderName'] as String?,
-      responseMessage: data['responseMessage'] as String?,
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'type': type,
-      'userId': userId,
-      'userName': userName,
-      'description': description,
-      if (lat != null) 'lat': lat,
-      if (lng != null) 'lng': lng,
-      if (reportType != null) 'reportType': reportType,
-      'status': status,
-      'createdAt': Timestamp.fromDate(createdAt),
-      if (respondedAt != null) 'respondedAt': Timestamp.fromDate(respondedAt!),
-      if (responderId != null) 'responderId': responderId,
-      if (responderName != null) 'responderName': responderName,
-      if (responseMessage != null) 'responseMessage': responseMessage,
-    };
-  }
-
-  // Legacy SQLite support (untuk migrasi)
   factory Report.fromMap(Map<String, dynamic> map) {
     return Report(
-      id: map['id']?.toString(),
+      id: map['id'].toString(),
+      // Mapping kolom legacy 'jenis' ke logika tipe baru
       type: map['jenis'] == 'SOS' ? 'SOS' : 'regular',
-      userId: 'legacy_user',
-      userName: 'Legacy User',
+      userId: map['user_id']?.toString() ?? 'unknown',
+      userName: 'Warga', // Simplifikasi karena join user belum ada
       description: map['deskripsi'] as String,
       lat: map['latitude'] as double?,
       lng: map['longitude'] as double?,
-      reportType: map['jenis'] as String?,
+      reportType: map['judul'] as String?, // Menggunakan 'judul' sebagai kategori/jenis
       status: map['status'] as String,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['dibuat_pada'] as int),
+      // Field tambahan ini belum ada di tabel 'laporan' versi awal, jadi null dulu
+      respondedAt: null,
+      responderId: null,
+      responderName: null,
+      responseMessage: null,
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'jenis': type == 'SOS' ? 'SOS' : reportType ?? 'regular',
+      'judul': reportType ?? type,
+      'deskripsi': description,
+      'latitude': lat,
+      'longitude': lng,
+      'dibuat_pada': createdAt.millisecondsSinceEpoch,
+      'status': status,
+      'user_id': userId,
+    };
   }
 }

@@ -1,57 +1,63 @@
-import 'package:firebase_auth/firebase_auth.dart' as firebase_auth;
-import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:async';
 
 import '../models/user_model.dart';
-import 'firestore_service.dart';
+import 'database_service.dart';
 
-/// Service untuk autentikasi Firebase.
+/// Service untuk autentikasi menggunakan SQLite Lokal (Tanpa Firebase).
 class AuthService {
   AuthService._internal();
   static final AuthService instance = AuthService._internal();
 
-  final firebase_auth.FirebaseAuth _auth = firebase_auth.FirebaseAuth.instance;
+  // Stream controller untuk memberitahu UI tentang perubahan status auth
+  final _authStateController = StreamController<User?>.broadcast();
+  
+  User? _currentUser;
 
-  firebase_auth.User? get currentUser => _auth.currentUser;
-  String? get currentUserId => _auth.currentUser?.uid;
+  User? get currentUser => _currentUser;
+  Stream<User?> get authStateChanges => _authStateController.stream;
 
-  Stream<firebase_auth.User?> get authStateChanges => _auth.authStateChanges();
-
-  /// Sign in secara anonymous (untuk demo/testing).
-  Future<firebase_auth.UserCredential> signInAnonymously() async {
-    return await _auth.signInAnonymously();
+  /// Sign in dengan email & password (cek database lokal).
+  Future<User?> signInWithEmail(String email, String password) async {
+    final user = await DatabaseService.instance.login(email, password);
+    if (user != null) {
+      _currentUser = user;
+      _authStateController.add(user);
+    }
+    return user;
   }
 
-  /// Sign in dengan email & password.
-  Future<firebase_auth.UserCredential> signInWithEmail(String email, String password) async {
-    return await _auth.signInWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
-  }
-
-  /// Sign up dengan email & password.
-  Future<firebase_auth.UserCredential> signUpWithEmail(String email, String password) async {
-    return await _auth.createUserWithEmailAndPassword(
-      email: email,
-      password: password,
-    );
+  /// Sign up dengan email & password (simpan ke database lokal).
+  Future<bool> signUpWithEmail({
+    required String email,
+    required String password,
+    required String name,
+    required String phone,
+    required String role,
+  }) async {
+    try {
+      final newUser = User(
+        id: 'temp_id', // ID akan di-generate otomatis oleh SQLite
+        displayName: name,
+        phone: phone,
+        email: email,
+        role: role,
+        contacts: [],
+        createdAt: DateTime.now(),
+      );
+      
+      await DatabaseService.instance.registerUser(newUser, password);
+      
+      // Auto login setelah register
+      await signInWithEmail(email, password);
+      return true;
+    } catch (e) {
+      return false;
+    }
   }
 
   /// Sign out.
   Future<void> signOut() async {
-    await _auth.signOut();
-  }
-
-  /// Get user data dari Firestore.
-  Future<User?> getUserData(String userId) async {
-    final doc = await FirestoreService.instance.userDoc(userId).get();
-    if (!doc.exists) return null;
-    return User.fromFirestore(doc);
-  }
-
-  /// Create atau update user data di Firestore.
-  Future<void> saveUserData(User user) async {
-    await FirestoreService.instance.userDoc(user.id).set(user.toFirestore());
+    _currentUser = null;
+    _authStateController.add(null);
   }
 }
-

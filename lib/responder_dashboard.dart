@@ -7,6 +7,7 @@ import 'models/report_model.dart';
 import 'responder_profile.dart';
 import 'services/report_service.dart';
 import 'services/fcm_service.dart';
+import 'services/auth_service.dart'; // Import AuthService
 import 'settings.dart';
 import 'splash.dart';
 
@@ -23,35 +24,40 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
   int _selectedIndex = 1; // 0 = Forum, 1 = Dashboard
   int _availabilityIndex = 0;
   bool _loadingReports = true;
-  int _lastReportCount = 0;
   List<Report> _reports = [];
   final ReportService _reportService = ReportService.instance;
+
+  // Cache data user agar tidak panggil AuthService terus
+  late String _displayName;
+  late String _role;
 
   @override
   void initState() {
     super.initState();
+    _loadUserData();
     _loadReports();
   }
 
-  void _loadReports() {
-    _reportService.getAllReports().listen((reports) {
-      if (!mounted) return;
+  void _loadUserData() {
+    final user = AuthService.instance.currentUser;
+    _displayName = user?.displayName ?? 'Petugas'; // Fallback jika null
+    _role = user?.role ?? 'Responder';
+  }
 
-      final newCount = reports.length;
-      if (newCount > _lastReportCount && _lastReportCount > 0) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Ada laporan baru untuk responder. Segera cek!'),
-          ),
-        );
-      }
+  Future<void> _loadReports() async {
+    setState(() => _loadingReports = true);
+    try {
+      final reports = await _reportService.getAllReports();
+      if (!mounted) return;
 
       setState(() {
         _reports = reports;
         _loadingReports = false;
-        _lastReportCount = newCount;
       });
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _loadingReports = false);
+    }
   }
 
   String _formatTime(DateTime date) {
@@ -140,10 +146,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
             ),
             SafeArea(
               child: RefreshIndicator(
-                onRefresh: () async {
-                  // Reload reports
-                  _lastReportCount = 0;
-                },
+                onRefresh: _loadReports,
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -312,12 +315,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                         child: Container(
                           width: 52,
                           height: 52,
-                          decoration: const BoxDecoration(
-                            image: DecorationImage(
-                              image: NetworkImage("https://placehold.co/118x118"),
-                              fit: BoxFit.cover,
-                            ),
-                          ),
+                          color: Colors.grey[200], // Placeholder color
+                          child: const Icon(Icons.person, size: 30, color: Colors.grey),
                         ),
                       ),
                       Positioned(
@@ -341,8 +340,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                   Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // --- DYNAMIC NAME ---
                       Text(
-                        'Christopher Bang',
+                        _displayName, // Menggunakan data dari AuthService
                         style: GoogleFonts.instrumentSans(
                           fontSize: 16,
                           fontWeight: FontWeight.w500,
@@ -372,8 +372,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                                 const Icon(Icons.shield_outlined,
                                     size: 14, color: Color(0xFF1A2E35)),
                                 const SizedBox(width: 6),
+                                // --- DYNAMIC ROLE ---
                                 Text(
-                                  'Polisi',
+                                  _role, // Menggunakan data dari AuthService
                                   style: GoogleFonts.instrumentSans(
                                     fontSize: 12,
                                     color: const Color(0xFF1A2E35),
@@ -381,18 +382,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                                 ),
                               ],
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          const Icon(Icons.location_on_outlined,
-                              size: 14, color: Color(0x99192D34)),
-                          const SizedBox(width: 4),
-                          Text(
-                            'Gunungpati, Kota Semarang',
-                            style: GoogleFonts.instrumentSans(
-                              fontSize: 11,
-                              color: const Color(0x99192D34),
-                            ),
-                          ),
+                          )
                         ],
                       ),
                     ],
@@ -406,81 +396,320 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  Widget _availabilityCard() {
-    final List<String> labels = [
-      'Tersedia',
-      'Bertugas',
-      'Menanggapi',
-      'Tidak Tersedia',
-    ];
+  Widget _incidentHeader() {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Text(
+          'Incident Live Feed',
+          style: GoogleFonts.orbitron(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: const Color(0xFF1A2E35),
+          ),
+        ),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: ShapeDecoration(
+            color: const Color(0xFFE7000B),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(38835400),
+            ),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 6,
+                height: 6,
+                decoration: const BoxDecoration(
+                    color: Colors.white, shape: BoxShape.circle),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'LIVE',
+                style: GoogleFonts.orbitron(
+                  fontSize: 10,
+                  fontWeight: FontWeight.w700,
+                  color: Colors.white,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyIncidentCard() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xB2FFFFFF),
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(width: 1.16, color: const Color(0xCCFFFFFF)),
+      ),
+      child: Column(
+        children: [
+          const Icon(Icons.check_circle_outline,
+              size: 48, color: Color(0xFF2ECC71)),
+          const SizedBox(height: 12),
+          Text(
+            'Semua Aman',
+            style: GoogleFonts.orbitron(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1A2E35),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Tidak ada laporan darurat aktif saat ini.',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.instrumentSans(
+              fontSize: 14,
+              color: const Color(0x991A2E35),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _incidentCard(Report report) {
+    final color = _accentColor(report.jenis);
+    final isSOS = report.type == 'SOS';
 
     return Container(
-      padding: const EdgeInsets.all(18),
+      padding: const EdgeInsets.all(16),
       decoration: ShapeDecoration(
         color: const Color(0xB2FFFFFF),
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)),
+          side: BorderSide(width: 1.16, color: color.withOpacity(0.3)),
+          borderRadius: BorderRadius.circular(24),
         ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Top row: Tag + Time
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: ShapeDecoration(
+                  color: color.withOpacity(0.1),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(38835400),
+                  ),
+                ),
+                child: Text(
+                  isSOS ? 'SOS ALERT' : report.jenis.toUpperCase(),
+                  style: GoogleFonts.orbitron(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: color,
+                  ),
+                ),
+              ),
+              Text(
+                _formatTime(report.createdAt),
+                style: GoogleFonts.instrumentSans(
+                  fontSize: 12,
+                  color: const Color(0x991A2E35),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+
+          // Title & Desc
+          Text(
+            report.reportType ?? (isSOS ? 'SOS Darurat' : 'Laporan'),
+            style: GoogleFonts.instrumentSans(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: const Color(0xFF1A2E35),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            report.description,
+            style: GoogleFonts.instrumentSans(
+              fontSize: 14,
+              color: const Color(0xB21A2E35),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Location snippet (optional)
+          Row(
+            children: [
+              Icon(Icons.location_on_outlined, size: 16, color: color),
+              const SizedBox(width: 4),
+              Expanded(
+                child: Text(
+                  report.lat != null ? '${report.lat}, ${report.lng}' : 'Lokasi tidak tersedia',
+                  style: GoogleFonts.instrumentSans(
+                    fontSize: 12,
+                    color: const Color(0xFF1A2E35),
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 16),
+          // Action Button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton(
+              onPressed: () async {
+                // Acknowledge logic
+                await FCMService.instance.acknowledgeReport(
+                  reportId: report.id ?? '',
+                  responderId: 'current_responder',
+                  responderName: _displayName, // Use dynamic name
+                );
+                _showSnack('Laporan diterima. Segera menuju lokasi.');
+                _loadReports(); // Refresh UI
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: color,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
+              ),
+              child: Text(
+                'TERIMA & TANGGAPI',
+                style: GoogleFonts.orbitron(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.white,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _availabilityCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: ShapeDecoration(
+        color: const Color(0xB2FFFFFF),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(24),
+          side: const BorderSide(width: 1.16, color: Color(0xCCFFFFFF)),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
-            'Status Ketersediaan',
-            style: GoogleFonts.instrumentSans(
+            'Set Availability',
+            style: GoogleFonts.orbitron(
               fontSize: 14,
-              fontWeight: FontWeight.w500,
+              fontWeight: FontWeight.w600,
               color: const Color(0xFF1A2E35),
             ),
           ),
           const SizedBox(height: 12),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: List.generate(labels.length, (index) {
-              final bool active = _availabilityIndex == index;
-              return GestureDetector(
-                onTap: () {
-                  setState(() {
-                    _availabilityIndex = index;
-                  });
-                },
-                child: Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                  decoration: ShapeDecoration(
-                    color: active
-                        ? const Color(0xFF28CFD7)
-                        : Colors.white.withValues(alpha: 0.95),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(999),
-                      side: BorderSide(
-                        color: active
-                            ? Colors.transparent
-                            : const Color(0xFFE0EBF0),
-                        width: 1,
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: ShapeDecoration(
+              color: const Color(0x0C1A2E35),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+              ),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _availabilityIndex = 0);
+                    },
+                    child: Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: _availabilityIndex == 0
+                            ? Colors.white
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: _availabilityIndex == 0
+                            ? [
+                                const BoxShadow(
+                                  color: Color(0x0C000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Online',
+                        style: GoogleFonts.instrumentSans(
+                          fontSize: 14,
+                          fontWeight: _availabilityIndex == 0
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: _availabilityIndex == 0
+                              ? const Color(0xFF2ECC71)
+                              : const Color(0xFF1A2E35),
+                        ),
                       ),
                     ),
                   ),
-                  child: Text(
-                    labels[index],
-                    style: GoogleFonts.instrumentSans(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                      color: active ? Colors.white : const Color(0xFF1A2E35),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () {
+                      setState(() => _availabilityIndex = 1);
+                    },
+                    child: Container(
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: _availabilityIndex == 1
+                            ? Colors.white
+                            : Colors.transparent,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: _availabilityIndex == 1
+                            ? [
+                                const BoxShadow(
+                                  color: Color(0x0C000000),
+                                  blurRadius: 4,
+                                  offset: Offset(0, 2),
+                                )
+                              ]
+                            : [],
+                      ),
+                      alignment: Alignment.center,
+                      child: Text(
+                        'Offline',
+                        style: GoogleFonts.instrumentSans(
+                          fontSize: 14,
+                          fontWeight: _availabilityIndex == 1
+                              ? FontWeight.w600
+                              : FontWeight.w400,
+                          color: _availabilityIndex == 1
+                              ? const Color(0xFFE74C3C)
+                              : const Color(0xFF1A2E35),
+                        ),
+                      ),
                     ),
                   ),
                 ),
-              );
-            }),
+              ],
+            ),
           ),
         ],
       ),
@@ -488,490 +717,121 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
   }
 
   Widget _menuSection() {
-    return Container(
-      padding: const EdgeInsets.all(18),
-      decoration: ShapeDecoration(
-        color: const Color(0xB2FFFFFF),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)),
+    return Column(
+      children: [
+        Row(
+          children: [
+            Expanded(child: _menuTile(Icons.history, 'Riwayat')),
+            const SizedBox(width: 12),
+            Expanded(child: _menuTile(Icons.group_outlined, 'Tim')),
+          ],
         ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Menu',
-            style: GoogleFonts.instrumentSans(
-              fontSize: 14,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF1A2E35),
-            ),
-          ),
-          const SizedBox(height: 12),
-          _menuCard(
-            icon: Icons.settings_outlined,
-            title: 'Pengaturan',
-            color: const Color(0xFF1A2E35),
-            iconBg: const Color(0x334ADEDE),
-            onTap: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                  builder: (_) => const SettingsScreen(),
-                ),
-              );
-            },
-          ),
-          const SizedBox(height: 8),
-          _menuCard(
-            icon: Icons.logout_rounded,
-            title: 'Keluar',
-            color: const Color(0xFFE7000B),
-            iconBg: const Color(0x19E7000B),
-            onTap: () {
-              Navigator.of(context).pushAndRemoveUntil(
-                MaterialPageRoute(
-                  builder: (_) => const SplashScreen(),
-                ),
-                (route) => false,
-              );
-            },
-          ),
-        ],
-      ),
+        const SizedBox(height: 12),
+        Row(
+          children: [
+            Expanded(child: _menuTile(Icons.map_outlined, 'Peta Area')),
+            const SizedBox(width: 12),
+            Expanded(child: _menuTile(Icons.settings_outlined, 'Pengaturan')),
+          ],
+        ),
+      ],
     );
   }
 
-  Widget _menuCard({
-    required IconData icon,
-    required String title,
-    required Color color,
-    required Color iconBg,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(16),
-      onTap: onTap,
-      child: Ink(
-        padding: const EdgeInsets.all(17),
+  Widget _menuTile(IconData icon, String label) {
+    return GestureDetector(
+      onTap: () {
+        if (label == 'Pengaturan') {
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (_) => const SettingsScreen()),
+          );
+        }
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(vertical: 16),
         decoration: ShapeDecoration(
-          color: const Color(0x99FFFFFF),
+          color: const Color(0xB2FFFFFF),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(16),
-            side: const BorderSide(
-              width: 1.16,
-              color: Color(0x264ADEDE),
-            ),
+            side: const BorderSide(width: 1.16, color: Color(0xCCFFFFFF)),
           ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 4,
-              offset: Offset(0, 2),
-            ),
-          ],
         ),
-        child: Row(
+        child: Column(
           children: [
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: iconBg,
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(icon, size: 20, color: color),
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                title,
-                style: GoogleFonts.instrumentSans(
-                  fontSize: 14,
-                  color: color,
-                ),
-              ),
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                size: 16, color: Color(0xFF1A2E35)),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _incidentHeader() {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          'Laporan Darurat Aktif',
-          style: GoogleFonts.instrumentSans(
-            fontSize: 14,
-            fontWeight: FontWeight.w500,
-            color: const Color(0xFF1A2E35),
-          ),
-        ),
-        Text(
-          '${_reports.length} Laporan',
-          style: GoogleFonts.instrumentSans(
-            fontSize: 11,
-            color: const Color(0x99192D34),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _incidentCard(Report report) {
-    final Color accent = _accentColor(report.type);
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: ShapeDecoration(
-        color: const Color(0xB2FFFFFF),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            width: 1.16,
-            color: accent.withValues(alpha: 0.4),
-          ),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                report.type == 'SOS'
-                    ? Icons.sos_rounded
-                    : Icons.local_fire_department_rounded,
-                size: 18,
-                color: accent,
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  report.reportType ?? report.type,
-                  style: GoogleFonts.instrumentSans(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w600,
-                    color: const Color(0xFF1A2E35),
-                  ),
-                ),
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: ShapeDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(999),
-                  ),
-                ),
-                child: Text(
-                  report.type,
-                  style: GoogleFonts.instrumentSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w500,
-                    color: accent,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          Text(
-            report.description,
-            style: GoogleFonts.instrumentSans(
-              fontSize: 12,
-              color: const Color(0xB2192D34),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.place_outlined,
-                  size: 13, color: Color(0x99192D34)),
-              const SizedBox(width: 4),
-              Text(
-                report.lat != null && report.lng != null 
-                    ? '${report.lat}, ${report.lng}'
-                    : 'Lokasi tidak disebutkan',
-                style: GoogleFonts.instrumentSans(
-                  fontSize: 11,
-                  color: const Color(0x99192D34),
-                ),
-              ),
-              const SizedBox(width: 12),
-              const Icon(Icons.access_time_rounded,
-                  size: 13, color: Color(0x99192D34)),
-              const SizedBox(width: 4),
-              Text(
-                _formatTime(report.createdAt),
-                style: GoogleFonts.instrumentSans(
-                  fontSize: 11,
-                  color: const Color(0x99192D34),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              _incidentActionButton(
-                icon: Icons.phone_in_talk_rounded,
-                label: 'Hubungi',
-                textColor: const Color(0xFF1A2E35),
-                borderColor: const Color(0xFF28CFD7),
-                onTap: () => _showSnack('Menghubungi pelapor...'),
-              ),
-              const SizedBox(width: 8),
-              _incidentActionButton(
-                icon: Icons.navigation_rounded,
-                label: 'Navigasi',
-                textColor: const Color(0xFF1A2E35),
-                borderColor: const Color(0xFF28CFD7),
-                onTap: () => _showSnack(
-                    report.lat != null && report.lng != null 
-                        ? 'Membuka navigasi ke ${report.lat}, ${report.lng}'
-                        : 'Lokasi tidak tersedia'),
-              ),
-              const SizedBox(width: 8),
-              _incidentActionButton(
-                icon: Icons.play_arrow_rounded,
-                label: 'Terima',
-                textColor: Colors.white,
-                borderColor: accent,
-                fillColor: accent,
-                onTap: () => _showSnack(
-                    'Laporan "${report.reportType ?? report.type}" ditandai sebagai diterima.'),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildEmptyIncidentCard() {
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(18),
-      decoration: ShapeDecoration(
-        color: const Color(0xB2FFFFFF),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)),
-        ),
-      ),
-      child: Center(
-        child: Text(
-          'Belum ada laporan masuk.\nTarik ke bawah untuk memuat ulang.',
-          textAlign: TextAlign.center,
-          style: GoogleFonts.instrumentSans(
-            color: const Color(0x99192D34),
-            fontSize: 14,
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _incidentActionButton({
-    required IconData icon,
-    required String label,
-    required Color textColor,
-    required Color borderColor,
-    Color? fillColor,
-    required VoidCallback onTap,
-  }) {
-    return Expanded(
-      child: InkWell(
-        borderRadius: BorderRadius.circular(999),
-        onTap: onTap,
-        child: Ink(
-          height: 36,
-          decoration: ShapeDecoration(
-            color: fillColor ?? Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(999),
-              side: BorderSide(color: borderColor, width: 1.2),
-            ),
-          ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon, size: 16, color: textColor),
-              const SizedBox(width: 6),
-              Text(
-                label,
-                style: GoogleFonts.instrumentSans(
-                  fontSize: 12,
-                  fontWeight: FontWeight.w500,
-                  color: textColor,
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ───────────────── BOTTOM NAV (Responder: Forum + Dashboard)
-Widget _bottomNav() {
-  return Container(
-    height: 90,
-    decoration: const BoxDecoration(
-      color: Color(0xCCFFFFFF),
-      border: Border(
-        top: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
-      ),
-      boxShadow: [
-        BoxShadow(
-          color: Color(0x14000000),
-          blurRadius: 12,
-          offset: Offset(0, -4),
-        )
-      ],
-    ),
-    child: Row(
-      mainAxisAlignment: MainAxisAlignment.spaceAround,
-      children: [
-        _navItem(
-          icon: Icons.forum_outlined,
-          label: 'Forum',
-          index: 0,
-          onTap: () {
-            setState(() {
-              _selectedIndex = 0;
-            });
-            Navigator.of(context).pushReplacement(
-              PageRouteBuilder(
-                pageBuilder: (_, animation, __) =>
-                    const ForumScreen(isResponder: true),
-                transitionsBuilder: (_, animation, __, child) =>
-                    FadeTransition(opacity: animation, child: child),
-              ),
-            );
-          },
-        ),
-        _navItem(
-          icon: Icons.grid_view_outlined,
-          label: 'Dashboard',
-          index: 1,
-          onTap: () {
-            // already here, no navigation
-            setState(() {
-              _selectedIndex = 1;
-            });
-          },
-        ),
-      ],
-    ),
-  );
-}
-
-Widget _navItem({
-  required IconData icon,
-  required String label,
-  required int index,
-  required VoidCallback onTap,
-}) {
-  final bool active = _selectedIndex == index;
-
-  if (active) {
-    // donut style for the active item
-    return GestureDetector(
-      onTap: onTap,
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: const ShapeDecoration(
-              color: Color(0xCCFFFFFF),
-              shape: CircleBorder(),
-              shadows: [
-                BoxShadow(
-                  color: Color(0x19000000),
-                  blurRadius: 15,
-                  offset: Offset(0, 10),
-                  spreadRadius: -3,
-                ),
-              ],
-            ),
-            child: Container(
-              margin: const EdgeInsets.all(5),
-              decoration: const ShapeDecoration(
-                color: Color(0x89A3E42F),
-                shape: CircleBorder(),
-              ),
-              child: Icon(
-                icon,
+            Icon(icon, color: const Color(0xFF1A2E35), size: 24),
+            const SizedBox(height: 8),
+            Text(
+              label,
+              style: GoogleFonts.instrumentSans(
+                fontSize: 14,
                 color: const Color(0xFF1A2E35),
               ),
             ),
-          ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _bottomNav() {
+    return Container(
+      height: 84,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        border: Border(top: BorderSide(color: Color(0xFFE0EBF0))),
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _navItem(Icons.forum_outlined, "Forum", 0),
+          _navItem(Icons.dashboard_rounded, "Dashboard", 1),
         ],
       ),
     );
   }
 
-  // inactive item
-  return InkWell(
-    borderRadius: BorderRadius.circular(14),
-    onTap: onTap,
-    child: Container(
-      padding: const EdgeInsets.only(top: 12),
-      width: 70,
+  Widget _navItem(IconData icon, String label, int index) {
+    final bool isSelected = _selectedIndex == index;
+    return GestureDetector(
+      onTap: () {
+        if (index == 0) {
+          // Navigate to Forum
+          Navigator.pushReplacement(
+            context,
+            PageRouteBuilder(
+              pageBuilder: (context, animation, secondaryAnimation) =>
+                  const ForumScreen(isResponder: true), // Pass isResponder
+              transitionsBuilder:
+                  (context, animation, secondaryAnimation, child) {
+                return FadeTransition(opacity: animation, child: child);
+              },
+            ),
+          );
+        }
+      },
       child: Column(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: ShapeDecoration(
-              color: Colors.transparent,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Icon(
-              icon,
-              size: 24,
-              color: const Color(0x7F192D34),
-            ),
+          Icon(
+            icon,
+            color: isSelected
+                ? const Color(0xFF1A2E35)
+                : const Color(0xFF1A2E35).withOpacity(0.4),
           ),
           const SizedBox(height: 4),
           Text(
             label,
             style: GoogleFonts.instrumentSans(
-              fontSize: 11,
-              fontWeight: FontWeight.w400,
-              color: const Color(0x7F192D34),
+              fontSize: 12,
+              fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
+              color: isSelected
+                  ? const Color(0xFF1A2E35)
+                  : const Color(0xFF1A2E35).withOpacity(0.4),
             ),
           ),
         ],
       ),
-    ),
-  );
-}
+    );
+  }
 }

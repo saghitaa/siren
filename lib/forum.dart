@@ -38,14 +38,19 @@ class _ForumScreenState extends State<ForumScreen> {
     super.dispose();
   }
 
-  void _loadPosts() {
-    _forumService.getAllPosts().listen((posts) {
+  Future<void> _loadPosts() async {
+    setState(() => _isLoading = true);
+    try {
+      final posts = await _forumService.getAllPosts();
       if (!mounted) return;
       setState(() {
         _posts = posts;
         _isLoading = false;
       });
-    });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+    }
   }
 
   Future<void> _handlePost() async {
@@ -53,20 +58,17 @@ class _ForumScreenState extends State<ForumScreen> {
     if (text.isEmpty) return;
 
     try {
-      // Ambil nama user dari auth
-      final userId = AuthService.instance.currentUserId;
-      String userName = widget.isResponder ? 'Responder' : 'Warga';
-      
-      if (userId != null) {
-        final user = await AuthService.instance.getUserData(userId);
-        if (user != null) {
-          userName = user.displayName;
-        }
+      final user = AuthService.instance.currentUser;
+      if (user == null) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Anda harus login untuk memposting.')),
+        );
+        return;
       }
 
       await _forumService.createPost(
         content: text,
-        name: userName,
+        name: user.displayName,
         role: widget.isResponder ? 'Responder' : 'Warga',
       );
 
@@ -75,10 +77,12 @@ class _ForumScreenState extends State<ForumScreen> {
       FocusScope.of(context).unfocus();
       
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Posting berhasil dikirim.'),
-        ),
+        const SnackBar(content: Text('Posting berhasil dikirim.')),
       );
+      
+      // Refresh posts
+      _loadPosts();
+      
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -102,99 +106,103 @@ class _ForumScreenState extends State<ForumScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFE0EBF0),
-      body: Container(
-        width: double.infinity,
-        height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFE0EBF0),
-              Color(0xFFF0F9FF),
-              Color(0xFFE8F8F5),
+      body: RefreshIndicator(
+        onRefresh: _loadPosts,
+        child: Container(
+          width: double.infinity,
+          height: double.infinity,
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topCenter,
+              end: Alignment.bottomCenter,
+              colors: [
+                Color(0xFFE0EBF0),
+                Color(0xFFF0F9FF),
+                Color(0xFFE8F8F5),
+              ],
+            ),
+          ),
+          child: Stack(
+            children: [
+              Positioned(
+                left: -48,
+                top: 726,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                  child: Opacity(
+                    opacity: 0.59,
+                    child: Container(
+                      width: 493,
+                      height: 367,
+                      decoration: const ShapeDecoration(
+                        color: Color(0x331A2E35),
+                        shape: OvalBorder(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                left: -84,
+                top: -169,
+                child: ImageFiltered(
+                  imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                  child: Opacity(
+                    opacity: 0.59,
+                    child: Container(
+                      width: 558,
+                      height: 283,
+                      decoration: const ShapeDecoration(
+                        color: Color(0x704ADEDE),
+                        shape: OvalBorder(),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+              SafeArea(
+                child: SingleChildScrollView(
+                  physics: const AlwaysScrollableScrollPhysics(),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 24.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const SizedBox(height: 20),
+                        _buildAppBarContent(),
+                        const SizedBox(height: 24),
+                        _buildHeader(),
+                        const SizedBox(height: 24),
+                        _buildCreatePostCard(),
+                        const SizedBox(height: 24),
+                        if (_isLoading)
+                          const Center(child: CircularProgressIndicator())
+                        else if (_posts.isEmpty)
+                          _buildEmptyForumCard()
+                        else
+                          ..._posts.map(
+                            (post) => Column(
+                              children: [
+                                _buildForumPost(post),
+                                const SizedBox(height: 16),
+                              ],
+                            ),
+                          ),
+                        const SizedBox(height: 120),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              Positioned(
+                bottom: 0,
+                left: 0,
+                right: 0,
+                child:
+                    widget.isResponder ? _buildResponderBottomNav() : _buildBottomNav(),
+              ),
             ],
           ),
-        ),
-        child: Stack(
-          children: [
-            Positioned(
-              left: -48,
-              top: 726,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                child: Opacity(
-                  opacity: 0.59,
-                  child: Container(
-                    width: 493,
-                    height: 367,
-                    decoration: const ShapeDecoration(
-                      color: Color(0x331A2E35),
-                      shape: OvalBorder(),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              left: -84,
-              top: -169,
-              child: ImageFiltered(
-                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                child: Opacity(
-                  opacity: 0.59,
-                  child: Container(
-                    width: 558,
-                    height: 283,
-                    decoration: const ShapeDecoration(
-                      color: Color(0x704ADEDE),
-                      shape: OvalBorder(),
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            SafeArea(
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const SizedBox(height: 20),
-                      _buildAppBarContent(),
-                      const SizedBox(height: 24),
-                      _buildHeader(),
-                      const SizedBox(height: 24),
-                      _buildCreatePostCard(),
-                      const SizedBox(height: 24),
-                      if (_isLoading)
-                        const Center(child: CircularProgressIndicator())
-                      else if (_posts.isEmpty)
-                        _buildEmptyForumCard()
-                      else
-                        ..._posts.map(
-                          (post) => Column(
-                            children: [
-                              _buildForumPost(post),
-                              const SizedBox(height: 16),
-                            ],
-                          ),
-                        ),
-                      const SizedBox(height: 120),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child:
-                  widget.isResponder ? _buildResponderBottomNav() : _buildBottomNav(),
-            ),
-          ],
         ),
       ),
     );

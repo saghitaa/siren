@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
-import 'choose.dart'; // Navigates to ChooseScreen
+import 'dashboard.dart'; // Dashboard Warga
+import 'responder_dashboard.dart'; // Dashboard Responder
+import 'choose.dart'; // Fallback
+import 'services/auth_service.dart';
 
 class LoginLoadingScreen extends StatefulWidget {
   const LoginLoadingScreen({super.key});
@@ -17,10 +20,46 @@ class _LoginLoadingScreenState extends State<LoginLoadingScreen>
   @override
   void initState() {
     super.initState();
-    // Re-using the loading dot animation from splash.dart
     _dotController =
         AnimationController(vsync: this, duration: const Duration(milliseconds: 1400))
           ..repeat(reverse: true);
+          
+    // Otomatis navigasi setelah delay
+    _navigateBasedOnRole();
+  }
+
+  Future<void> _navigateBasedOnRole() async {
+    // Simulasi loading agar animasi terlihat
+    await Future.delayed(const Duration(seconds: 2));
+    
+    if (!mounted) return;
+
+    final user = AuthService.instance.currentUser;
+
+    Widget nextScreen;
+    if (user != null) {
+      if (user.role.toLowerCase() == 'responder') {
+        nextScreen = const ResponderDashboardScreen();
+      } else {
+        nextScreen = const DashboardScreen();
+      }
+    } else {
+      // Jika sesi hilang (aneh, tapi jaga-jaga), kembali ke choose/login
+      nextScreen = const ChooseScreen();
+    }
+
+    Navigator.of(context).pushReplacement(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => nextScreen,
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation.drive(CurveTween(curve: Curves.easeIn)),
+            child: child,
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
   }
 
   @override
@@ -29,154 +68,136 @@ class _LoginLoadingScreenState extends State<LoginLoadingScreen>
     super.dispose();
   }
 
-  void _navigateToChooseScreen() {
-    Navigator.of(context).pushReplacement(
-      PageRouteBuilder(
-        pageBuilder: (context, animation, secondaryAnimation) =>
-            const ChooseScreen(),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          return FadeTransition(
-            opacity: animation.drive(CurveTween(curve: Curves.easeIn)),
-            child: child,
-          );
-        },
-        transitionDuration: const Duration(milliseconds: 300),
-      ),
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: GestureDetector(
-        onTap: _navigateToChooseScreen, // Tap anywhere to continue
-        child: Container(
-          width: double.infinity,
-          height: double.infinity,
-          decoration: const BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [Color(0xFFE0EBF0), Color(0xFFF0F9FF), Color(0xFFE8F8F5)],
-            ),
+      body: Container(
+        width: double.infinity,
+        height: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFFE0EBF0), Color(0xFFF0F9FF), Color(0xFFE8F8F5)],
           ),
-          child: Stack(
-            children: [
-              Positioned(
-                left: -48,
-                top: 726,
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                  child: Opacity(
-                    opacity: 0.59,
-                    child: Container(
-                      width: 493,
-                      height: 367,
-                      decoration: ShapeDecoration(
-                        color: const Color(0x331A2E35),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(38835400),
-                        ),
+        ),
+        child: Stack(
+          children: [
+            Positioned(
+              left: -48,
+              top: 726,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                child: Opacity(
+                  opacity: 0.59,
+                  child: Container(
+                    width: 493,
+                    height: 367,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x331A2E35),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(38835400),
                       ),
                     ),
                   ),
                 ),
               ),
-              Positioned(
-                left: -84,
-                top: -169,
-                child: ImageFiltered(
-                  imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
-                  child: Opacity(
-                    opacity: 0.59,
-                    child: Container(
-                      width: 558,
-                      height: 283,
-                      decoration: ShapeDecoration(
-                        color: const Color(0x704ADEDE),
-                        shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(38835400)),
-                      ),
+            ),
+            Positioned(
+              left: -84,
+              top: -169,
+              child: ImageFiltered(
+                imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
+                child: Opacity(
+                  opacity: 0.59,
+                  child: Container(
+                    width: 558,
+                    height: 283,
+                    decoration: ShapeDecoration(
+                      color: const Color(0x704ADEDE),
+                      shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(38835400)),
                     ),
                   ),
                 ),
               ),
-              Align(
-                alignment: Alignment.center,
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      width: 160,
-                      height: 160,
-                      decoration: BoxDecoration(
-                        borderRadius: BorderRadius.circular(24),
-                        gradient: const LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: [Color(0x664ADEDE), Color(0x66A3E42F)],
-                        ),
-                        border: Border.all(
-                            color: const Color(0x80FFFFFF), width: 1),
-                        boxShadow: const [
-                          BoxShadow(
-                            color: Color(0x19000000),
-                            blurRadius: 15,
-                            offset: Offset(0, 4),
-                          )
-                        ],
+            ),
+            Align(
+              alignment: Alignment.center,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 160,
+                    height: 160,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(24),
+                      gradient: const LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: [Color(0x664ADEDE), Color(0x66A3E42F)],
                       ),
-                      child: ClipRRect(
-                        borderRadius: BorderRadius.circular(24),
-                        child: Padding(
-                          padding: const EdgeInsets.all(10.0),
-                          child: Image.asset(
-                            'assets/images/siren.png',
-                            fit: BoxFit.contain,
-                            errorBuilder: (context, error, stackTrace) {
-                              return const Icon(Icons.warning, color: Colors.orange);
-                            },
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 40),
-                    Text(
-                      "SIREN",
-                      style: GoogleFonts.orbitron(
-                        fontSize: 32,
-                        fontWeight: FontWeight.normal,
-                        letterSpacing: 9.6,
-                        color: const Color(0xFF1A2E35),
-                      ),
-                    ),
-                    const SizedBox(height: 12),
-                    Text(
-                      "Sedang masuk ke akun anda...", // Loading text
-                      textAlign: TextAlign.center,
-                      style: GoogleFonts.instrumentSans(
-                        fontSize: 15,
-                        color: const Color(0xB31A2E35),
-                        fontWeight: FontWeight.normal,
-                        letterSpacing: 0.3,
-                      ),
-                    ),
-                    const SizedBox(height: 48),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _loadingDot(0),
-                        const SizedBox(width: 8),
-                        _loadingDot(0.2),
-                        const SizedBox(width: 8),
-                        _loadingDot(0.4),
+                      border: Border.all(
+                          color: const Color(0x80FFFFFF), width: 1),
+                      boxShadow: const [
+                        BoxShadow(
+                          color: Color(0x19000000),
+                          blurRadius: 15,
+                          offset: Offset(0, 4),
+                        )
                       ],
                     ),
-                  ],
-                ),
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(24),
+                      child: Padding(
+                        padding: const EdgeInsets.all(10.0),
+                        child: Image.asset(
+                          'assets/images/siren.png',
+                          fit: BoxFit.contain,
+                          errorBuilder: (context, error, stackTrace) {
+                            return const Icon(Icons.warning, color: Colors.orange);
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                  Text(
+                    "SIREN",
+                    style: GoogleFonts.orbitron(
+                      fontSize: 32,
+                      fontWeight: FontWeight.normal,
+                      letterSpacing: 9.6,
+                      color: const Color(0xFF1A2E35),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  // Tampilkan teks yang lebih dinamis jika mau, tapi statis juga oke
+                  Text(
+                    "Memuat Dashboard...", 
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.instrumentSans(
+                      fontSize: 15,
+                      color: const Color(0xB31A2E35),
+                      fontWeight: FontWeight.normal,
+                      letterSpacing: 0.3,
+                    ),
+                  ),
+                  const SizedBox(height: 48),
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      _loadingDot(0),
+                      const SizedBox(width: 8),
+                      _loadingDot(0.2),
+                      const SizedBox(width: 8),
+                      _loadingDot(0.4),
+                    ],
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

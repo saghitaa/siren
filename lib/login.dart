@@ -3,6 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'signin.dart';
 import 'login_loading.dart';
+import 'services/auth_service.dart'; // Import AuthService
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -16,6 +17,7 @@ class _LoginScreenState extends State<LoginScreen> {
   final _passwordController = TextEditingController();
   bool _isButtonEnabled = false;
   bool _isPasswordObscured = true;
+  bool _isLoading = false; // Tambahkan state loading
 
   @override
   void initState() {
@@ -41,6 +43,62 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  // Fungsi login yang sebenarnya
+  Future<void> _handleLogin() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      final user = await AuthService.instance.signInWithEmail(
+        _emailController.text.trim(),
+        _passwordController.text.trim(),
+      );
+
+      if (!mounted) return;
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (user != null) {
+        // Login Berhasil -> Ke Loading Screen
+        Navigator.of(context).pushReplacement(
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) =>
+                const LoginLoadingScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(
+                opacity: animation.drive(CurveTween(curve: Curves.easeIn)),
+                child: child,
+              );
+            },
+            transitionDuration: const Duration(milliseconds: 300),
+          ),
+        );
+      } else {
+        // Login Gagal (User null)
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Email atau kata sandi salah'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Terjadi kesalahan: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -56,6 +114,7 @@ class _LoginScreenState extends State<LoginScreen> {
         ),
         child: Stack(
           children: [
+            // ... (Background widgets sama seperti sebelumnya)
             Positioned(
               left: -48,
               top: 726,
@@ -103,6 +162,7 @@ class _LoginScreenState extends State<LoginScreen> {
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
                       const SizedBox(height: 60),
+                      // ... (Logo dan Header sama)
                       Container(
                         width: 74,
                         height: 74,
@@ -170,6 +230,8 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+                      
+                      // Inputs
                       _buildTextField(
                         controller: _emailController,
                         label: "Alamat Email",
@@ -190,6 +252,8 @@ class _LoginScreenState extends State<LoginScreen> {
                           });
                         },
                       ),
+                      
+                      // Forgot Password Link
                       Align(
                         alignment: Alignment.centerRight,
                         child: InkWell(
@@ -212,30 +276,12 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                       const SizedBox(height: 16),
-                      // --- FIXED BUTTON ---
+
+                      // Login Button (Updated)
                       GestureDetector(
-                        onTap: _isButtonEnabled
-                            ? () {
-                                // TODO: Handle login logic
-                                Navigator.of(context).pushReplacement(
-                                  PageRouteBuilder(
-                                    pageBuilder: (context, animation,
-                                            secondaryAnimation) =>
-                                        const LoginLoadingScreen(),
-                                    transitionsBuilder: (context, animation,
-                                        secondaryAnimation, child) {
-                                      return FadeTransition(
-                                        opacity: animation.drive(
-                                            CurveTween(curve: Curves.easeIn)),
-                                        child: child,
-                                      );
-                                    },
-                                    transitionDuration:
-                                        const Duration(milliseconds: 300),
-                                  ),
-                                );
-                              }
-                            : null, // Makes it unclickable
+                        onTap: (_isButtonEnabled && !_isLoading) 
+                            ? _handleLogin 
+                            : null,
                         child: Container(
                           width: double.infinity,
                           padding: const EdgeInsets.symmetric(vertical: 13),
@@ -263,19 +309,28 @@ class _LoginScreenState extends State<LoginScreen> {
                                   ]
                                 : null,
                           ),
-                          child: Text(
-                            "MASUK",
-                            textAlign: TextAlign.center,
-                            style: GoogleFonts.instrumentSans(
-                              color: Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.w500,
-                              letterSpacing: 0.85,
-                            ),
-                          ),
+                          child: _isLoading 
+                              ? const SizedBox(
+                                  height: 20,
+                                  width: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                                  ),
+                                )
+                              : Text(
+                                  "MASUK",
+                                  textAlign: TextAlign.center,
+                                  style: GoogleFonts.instrumentSans(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w500,
+                                    letterSpacing: 0.85,
+                                  ),
+                                ),
                         ),
                       ),
-                      // --- END FIXED BUTTON ---
+                      // ... (Sisa kode UI sama)
                       const SizedBox(height: 24),
                       Row(
                         children: [
@@ -464,11 +519,9 @@ class _LoginScreenState extends State<LoginScreen> {
               fontSize: 16,
             ),
             helperText: helperText,
-            // --- FIXED FONT ---
             helperStyle: GoogleFonts.instrumentSans(color: const Color(0x99192D34)),
             errorText: errorText,
             errorStyle: GoogleFonts.instrumentSans(color: Colors.red.shade700),
-            // --- END FIXED FONT ---
             prefixIcon: const Icon(Icons.lock_outline_rounded,
                 color: Color(0x99192D34), size: 20),
             suffixIcon: IconButton(

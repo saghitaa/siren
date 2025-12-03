@@ -80,10 +80,10 @@
 
 Semua dependencies sudah ditambahkan di `pubspec.yaml`:
 - `firebase_core`, `cloud_firestore`, `firebase_messaging`, `cloud_functions`, `firebase_auth`
-- `geolocator`, `audioplayers`, `url_launcher`
-- `sqflite`, `path_provider` (untuk cache offline opsional)
+ (untuk cache offline opsional)
 
-Jalankan:
+Jalankan:- `geolocator`, `audioplayers`, `url_launcher`
+- `sqflite`, `path_provider`
 ```bash
 flutter pub get
 ```

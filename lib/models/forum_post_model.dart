@@ -1,7 +1,6 @@
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/foundation.dart';
 
-/// Model kiriman forum yang disimpan di Firestore.
+/// Model kiriman forum yang disimpan di SQLite.
 @immutable
 class ForumPost {
   final String? id;
@@ -42,40 +41,26 @@ class ForumPost {
     );
   }
 
-  factory ForumPost.fromFirestore(DocumentSnapshot<Map<String, dynamic>> doc) {
-    final data = doc.data()!;
-    return ForumPost(
-      id: doc.id,
-      userId: data['userId'] as String,
-      name: data['name'] as String,
-      role: data['role'] as String,
-      content: data['content'] as String,
-      repliesCount: data['repliesCount'] as int? ?? 0,
-      createdAt: (data['createdAt'] as Timestamp).toDate(),
-    );
-  }
-
-  Map<String, dynamic> toFirestore() {
-    return {
-      'userId': userId,
-      'name': name,
-      'role': role,
-      'content': content,
-      'repliesCount': repliesCount,
-      'createdAt': Timestamp.fromDate(createdAt),
-    };
-  }
-
-  // Legacy SQLite support
   factory ForumPost.fromMap(Map<String, dynamic> map) {
     return ForumPost(
-      id: map['id']?.toString(),
-      userId: 'legacy_user',
+      id: map['id'].toString(),
+      userId: 'legacy_user', // TODO: Tambahkan user_id di tabel forum
       name: map['nama'] as String,
       role: map['peran'] as String,
       content: map['isi'] as String,
       repliesCount: map['jumlah_balasan'] as int? ?? 0,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['dibuat_pada'] as int),
     );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'nama': name,
+      'peran': role,
+      'isi': content,
+      'jumlah_balasan': repliesCount,
+      'dibuat_pada': createdAt.millisecondsSinceEpoch,
+      // 'user_id': userId // Tambahkan jika tabel sudah diupdate
+    };
   }
 }
