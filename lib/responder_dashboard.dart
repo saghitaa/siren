@@ -2,10 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
-// --- IMPORT PETA ---
+// --- IMPORT PETA & AUDIO ---
 import 'package:flutter_map/flutter_map.dart';
 import 'package:latlong2/latlong.dart';
-// -------------------
+import 'package:audioplayers/audioplayers.dart';
+// ---------------------------
 
 import 'forum.dart';
 import 'models/report_model.dart';
@@ -15,7 +16,6 @@ import 'services/fcm_service.dart';
 import 'services/auth_service.dart';
 import 'settings.dart';
 import 'splash.dart';
-
 
 class ResponderDashboardScreen extends StatefulWidget {
   const ResponderDashboardScreen({super.key});
@@ -31,6 +31,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
   bool _loadingReports = true;
   List<Report> _reports = [];
   final ReportService _reportService = ReportService.instance;
+
+  // 1. Inisialisasi Audio Player
+  final AudioPlayer _audioPlayer = AudioPlayer();
 
   late String _displayName;
   late String _role;
@@ -53,13 +56,36 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     try {
       final reports = await _reportService.getAllReports();
       if (!mounted) return;
+
       setState(() {
         _reports = reports;
         _loadingReports = false;
       });
+
+      // 2. Panggil Logika Suara setelah data dimuat
+      _checkAndPlaySound(reports);
+
     } catch (e) {
       if (!mounted) return;
       setState(() => _loadingReports = false);
+    }
+  }
+
+  // 3. Fungsi Logika Suara
+  Future<void> _checkAndPlaySound(List<Report> reports) async {
+    bool hasActiveSOS = reports.any((r) => r.type == 'SOS' && r.status != 'Selesai');
+    bool hasNewReport = reports.any((r) => r.type != 'SOS' && r.status == 'Belum ditanggapi');
+
+    try {
+      if (hasActiveSOS) {
+        await _audioPlayer.stop();
+        await _audioPlayer.play(AssetSource('sounds/sos_siren.mp3'));
+      } else if (hasNewReport) {
+        await _audioPlayer.stop();
+        await _audioPlayer.play(AssetSource('sounds/notif.mp3'));
+      }
+    } catch (e) {
+      debugPrint("Gagal memutar suara: $e");
     }
   }
 
@@ -80,7 +106,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     }
   }
 
-  // --- FUNGSI TAMPILKAN POPUP PETA ---
   void _showMapDialog(BuildContext context, double lat, double lng, String title) {
     showDialog(
       context: context,
@@ -99,7 +124,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                 width: double.infinity,
                 child: FlutterMap(
                   options: MapOptions(
-                    initialCenter: LatLng(lat, lng), // PUSAT PETA DI LOKASI KEJADIAN
+                    initialCenter: LatLng(lat, lng),
                     initialZoom: 15.0,
                   ),
                   children: [
@@ -130,11 +155,9 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
       },
     );
   }
-  // -----------------------------------
 
   @override
   Widget build(BuildContext context) {
-    // ... (Kode Scaffold dan Background sama seperti file asli) ...
     return Scaffold(
       backgroundColor: const Color(0xFFE0EBF0),
       body: Container(
@@ -149,7 +172,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
         ),
         child: Stack(
           children: [
-            // Background Blurs (Copy dari file asli agar rapi)
             Positioned(left: -48, top: 726, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50), child: Opacity(opacity: 0.59, child: Container(width: 493, height: 367, decoration: ShapeDecoration(color: const Color(0x331A2E35), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(38835400))))))),
             Positioned(left: -84, top: -169, child: ImageFiltered(imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50), child: Opacity(opacity: 0.59, child: Container(width: 558, height: 283, decoration: ShapeDecoration(color: const Color(0x704ADEDE), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(38835400))))))),
 
@@ -190,11 +212,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ... (Widget _headerCard, _incidentHeader, _buildEmptyIncidentCard SAMA seperti file asli) ...
-  // Untuk mempersingkat, saya hanya menyertakan bagian yang BERUBAH (_incidentCard).
-  // Pastikan Anda menyalin widget pembantu lainnya dari file lama jika hilang.
+  // --- WIDGET HELPER ---
 
-  // WIDGET PENTING: CARD DENGAN TOMBOL PETA
   Widget _incidentCard(Report report) {
     final color = _accentColor(report.jenis);
     final isSOS = report.type == 'SOS';
@@ -232,7 +251,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
           Text(report.description, style: GoogleFonts.instrumentSans(fontSize: 14, color: const Color(0xB21A2E35))),
           const SizedBox(height: 12),
 
-          // INFO LOKASI + TOMBOL PETA
           Row(
             children: [
               Icon(Icons.location_on_outlined, size: 16, color: color),
@@ -249,18 +267,8 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
                   onTap: () => _showMapDialog(context, report.lat!, report.lng!, report.jenis),
                   child: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: Colors.blueAccent.withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
-                      border: Border.all(color: Colors.blueAccent),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.map, size: 12, color: Colors.blueAccent),
-                        const SizedBox(width: 4),
-                        Text("LIHAT PETA", style: GoogleFonts.instrumentSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent)),
-                      ],
-                    ),
+                    decoration: BoxDecoration(color: Colors.blueAccent.withOpacity(0.1), borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.blueAccent)),
+                    child: Row(children: [const Icon(Icons.map, size: 12, color: Colors.blueAccent), const SizedBox(width: 4), Text("LIHAT PETA", style: GoogleFonts.instrumentSans(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.blueAccent))]),
                   ),
                 )
             ],
@@ -273,6 +281,7 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
               onPressed: () async {
                 await FCMService.instance.acknowledgeReport(reportId: report.id ?? '', responderId: 'current_responder', responderName: _displayName);
                 ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Laporan diterima. Segera menuju lokasi.')));
+                await _audioPlayer.stop();
                 _loadReports();
               },
               style: ElevatedButton.styleFrom(backgroundColor: color, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)), padding: const EdgeInsets.symmetric(vertical: 12)),
@@ -284,11 +293,6 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
     );
   }
 
-  // ... (Widget _headerCard, _availabilityCard, _menuSection, _bottomNav, dll TETAP SAMA) ...
-  // Mohon salin widget-widget tersebut dari file asli (responder_dashboard.dart sebelumnya)
-  // agar tidak error. Kode di atas fokus pada penambahan LOGIKA MAP dan _incidentCard.
-
-  // --- HELPER WIDGETS (Disalin agar tidak error saat copy-paste) ---
   Widget _headerCard(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(18),
@@ -302,11 +306,17 @@ class _ResponderDashboardScreenState extends State<ResponderDashboardScreen> {
       ]),
     );
   }
+
   Widget _incidentHeader() { return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text('Incident Live Feed', style: GoogleFonts.orbitron(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1A2E35))), Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: ShapeDecoration(color: const Color(0xFFE7000B), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(38835400))), child: Row(children: [Container(width: 6, height: 6, decoration: const BoxDecoration(color: Colors.white, shape: BoxShape.circle)), const SizedBox(width: 4), Text('LIVE', style: GoogleFonts.orbitron(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white))]))]); }
+
   Widget _buildEmptyIncidentCard() { return Container(width: double.infinity, padding: const EdgeInsets.all(20), decoration: BoxDecoration(color: const Color(0xB2FFFFFF), borderRadius: BorderRadius.circular(24), border: Border.all(width: 1.16, color: const Color(0xCCFFFFFF))), child: Column(children: [const Icon(Icons.check_circle_outline, size: 48, color: Color(0xFF2ECC71)), const SizedBox(height: 12), Text('Semua Aman', style: GoogleFonts.orbitron(fontSize: 16, fontWeight: FontWeight.w600, color: const Color(0xFF1A2E35))), const SizedBox(height: 4), Text('Tidak ada laporan darurat aktif saat ini.', textAlign: TextAlign.center, style: GoogleFonts.instrumentSans(fontSize: 14, color: const Color(0x991A2E35))) ])); }
+
   Widget _availabilityCard() { return Container(padding: const EdgeInsets.all(16), decoration: ShapeDecoration(color: const Color(0xB2FFFFFF), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24), side: const BorderSide(width: 1.16, color: Color(0xCCFFFFFF)))), child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text('Set Availability', style: GoogleFonts.orbitron(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1A2E35))), const SizedBox(height: 12), Container(padding: const EdgeInsets.all(4), decoration: ShapeDecoration(color: const Color(0x0C1A2E35), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12))), child: Row(children: [Expanded(child: GestureDetector(onTap: () => setState(() => _availabilityIndex = 0), child: Container(height: 36, decoration: BoxDecoration(color: _availabilityIndex == 0 ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(10), boxShadow: _availabilityIndex == 0 ? [const BoxShadow(color: Color(0x0C000000), blurRadius: 4, offset: Offset(0, 2))] : []), alignment: Alignment.center, child: Text('Online', style: GoogleFonts.instrumentSans(fontSize: 14, fontWeight: _availabilityIndex == 0 ? FontWeight.w600 : FontWeight.w400, color: _availabilityIndex == 0 ? const Color(0xFF2ECC71) : const Color(0xFF1A2E35)))))), Expanded(child: GestureDetector(onTap: () => setState(() => _availabilityIndex = 1), child: Container(height: 36, decoration: BoxDecoration(color: _availabilityIndex == 1 ? Colors.white : Colors.transparent, borderRadius: BorderRadius.circular(10), boxShadow: _availabilityIndex == 1 ? [const BoxShadow(color: Color(0x0C000000), blurRadius: 4, offset: Offset(0, 2))] : []), alignment: Alignment.center, child: Text('Offline', style: GoogleFonts.instrumentSans(fontSize: 14, fontWeight: _availabilityIndex == 1 ? FontWeight.w600 : FontWeight.w400, color: _availabilityIndex == 1 ? const Color(0xFFE74C3C) : const Color(0xFF1A2E35))))))]))])); }
+
   Widget _menuSection() { return Column(children: [Row(children: [Expanded(child: _menuTile(Icons.history, 'Riwayat')), const SizedBox(width: 12), Expanded(child: _menuTile(Icons.group_outlined, 'Tim'))]), const SizedBox(height: 12), Row(children: [Expanded(child: _menuTile(Icons.map_outlined, 'Peta Area')), const SizedBox(width: 12), Expanded(child: _menuTile(Icons.settings_outlined, 'Pengaturan'))])]); }
+
   Widget _menuTile(IconData icon, String label) { return GestureDetector(onTap: () { if (label == 'Pengaturan') Navigator.push(context, MaterialPageRoute(builder: (_) => const SettingsScreen())); }, child: Container(padding: const EdgeInsets.symmetric(vertical: 16), decoration: ShapeDecoration(color: const Color(0xB2FFFFFF), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16), side: const BorderSide(width: 1.16, color: Color(0xCCFFFFFF)))), child: Column(children: [Icon(icon, color: const Color(0xFF1A2E35), size: 24), const SizedBox(height: 8), Text(label, style: GoogleFonts.instrumentSans(fontSize: 14, color: const Color(0xFF1A2E35)))]))); }
   Widget _bottomNav() { return Container(height: 84, decoration: const BoxDecoration(color: Colors.white, border: Border(top: BorderSide(color: Color(0xFFE0EBF0)))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceAround, children: [_navItem(Icons.forum_outlined, "Forum", 0), _navItem(Icons.dashboard_rounded, "Dashboard", 1)])); }
+
   Widget _navItem(IconData icon, String label, int index) { final bool isSelected = _selectedIndex == index; return GestureDetector(onTap: () { if (index == 0) Navigator.pushReplacement(context, PageRouteBuilder(pageBuilder: (_,__,___) => const ForumScreen(isResponder: true), transitionsBuilder: (_,a,__,c) => FadeTransition(opacity: a, child: c))); }, child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [Icon(icon, color: isSelected ? const Color(0xFF1A2E35) : const Color(0xFF1A2E35).withOpacity(0.4)), const SizedBox(height: 4), Text(label, style: GoogleFonts.instrumentSans(fontSize: 12, fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400, color: isSelected ? const Color(0xFF1A2E35) : const Color(0xFF1A2E35).withOpacity(0.4)))])); }
 }
