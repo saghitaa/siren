@@ -9,9 +9,10 @@ import 'profile.dart';
 import 'report.dart';
 import 'services/database_service.dart';
 import 'services/sos_service.dart';
-import 'services/auth_service.dart'; // <--- IMPORT PENTING
+import 'services/auth_service.dart';
 import 'settings.dart';
 import 'splash.dart';
+import 'notification_screen.dart'; // Pastikan file ini ada di folder lib
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -31,7 +32,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   @override
   void initState() {
     super.initState();
-    _loadUserData(); // <--- Ambil data user saat aplikasi dibuka
+    _loadUserData();
     _loadReports();
   }
 
@@ -41,8 +42,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
     if (user != null) {
       setState(() {
         _displayName = user.displayName;
-
-        // Kapitalisasi huruf pertama role (misal: warga -> Warga)
         if (user.role.isNotEmpty) {
           _role = "${user.role[0].toUpperCase()}${user.role.substring(1)}";
         } else {
@@ -230,50 +229,59 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
           ],
         ),
-        Stack(
-          clipBehavior: Clip.none,
-          children: [
-            Container(
-              width: 42,
-              height: 42,
-              decoration: const ShapeDecoration(
-                color: Color(0x99FFFFFF),
-                shape: OvalBorder(
-                  side: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
-                ),
-              ),
-              child: const Icon(Icons.notifications_none_outlined,
-                  color: Color(0xFF1A2E35), size: 22),
-            ),
-            Positioned(
-              right: -3,
-              top: -3,
-              child: Container(
-                width: 16,
-                height: 16,
+        // Tombol Lonceng (Notifikasi)
+        GestureDetector(
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(builder: (context) => const NotificationScreen()),
+            );
+          },
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: 42,
+                height: 42,
                 decoration: const ShapeDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment(0.50, 0.00),
-                    end: Alignment(0.50, 1.00),
-                    colors: [Color(0xFF4ADEDE), Color(0xFFA3E42F)],
-                  ),
+                  color: Color(0x99FFFFFF),
                   shape: OvalBorder(
-                    side: BorderSide(width: 1.16, color: Colors.white),
+                    side: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
                   ),
                 ),
-                child: Center(
-                  child: Text(
-                    '3',
-                    style: GoogleFonts.instrumentSans(
-                      color: Colors.white,
-                      fontSize: 10,
-                      fontWeight: FontWeight.w600,
+                child: const Icon(Icons.notifications_none_outlined,
+                    color: Color(0xFF1A2E35), size: 22),
+              ),
+              Positioned(
+                right: -3,
+                top: -3,
+                child: Container(
+                  width: 16,
+                  height: 16,
+                  decoration: const ShapeDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment(0.50, 0.00),
+                      end: Alignment(0.50, 1.00),
+                      colors: [Color(0xFF4ADEDE), Color(0xFFA3E42F)],
+                    ),
+                    shape: OvalBorder(
+                      side: BorderSide(width: 1.16, color: Colors.white),
+                    ),
+                  ),
+                  child: Center(
+                    child: Text(
+                      '!',
+                      style: GoogleFonts.instrumentSans(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ],
     );
@@ -286,13 +294,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Navigator.of(context).push(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-            const ProfileScreen(),
+                const ProfileScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
           ),
-        ).then((_) => _loadUserData()); // Refresh data saat kembali dari profile
+        ).then((_) => _loadUserData());
       },
       child: Container(
         width: double.infinity,
@@ -334,9 +342,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // --- BAGIAN INI SUDAH DINAMIS ---
                 Text(
-                  _displayName, // Menggunakan variabel
+                  _displayName,
                   style: GoogleFonts.instrumentSans(
                     color: const Color(0xFF1A2E35),
                     fontSize: 18,
@@ -346,7 +353,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 4),
                 Container(
                   padding:
-                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: ShapeDecoration(
                     gradient: const LinearGradient(
                       begin: Alignment(0.50, 0.00),
@@ -360,14 +367,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   child: Text(
-                    _role, // Menggunakan variabel
+                    _role,
                     style: GoogleFonts.instrumentSans(
                       color: const Color(0xFF1A2E35),
                       fontSize: 12,
                     ),
                   ),
                 ),
-                // --------------------------------
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -409,7 +415,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
             HapticFeedback.lightImpact();
             SOSService.instance.sendSOS(
               context: context,
-              locationText: 'Lokasi tidak spesifik (contoh).',
             );
           },
           child: Container(
@@ -625,8 +630,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const Icon(Icons.location_on_outlined,
                         color: Color(0x99192D34), size: 12),
                     const SizedBox(width: 4),
-                    // --- PERBAIKAN DI SINI ---
-                    Expanded( // 1. Bungkus dengan Expanded
+                    // Perbaikan Overflow
+                    Expanded(
                       child: Text(
                         report.lat != null && report.lng != null
                             ? '${report.lat}, ${report.lng}'
@@ -635,11 +640,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           color: const Color(0x99192D34),
                           fontSize: 11,
                         ),
-                        maxLines: 1, // 2. Batasi hanya 1 baris
-                        overflow: TextOverflow.ellipsis, // 3. Ganti sisa teks dengan "..."
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                       ),
                     ),
-                    // -------------------------
                   ],
                 ),
               ],

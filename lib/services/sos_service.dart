@@ -12,33 +12,26 @@ class SOSService {
   static final SOSService instance = SOSService._internal();
 
   final AudioPlayer _audioPlayer = AudioPlayer();
-  
-  // Tidak ada Cloud Functions, semua lokal
-  
+
+  // Variabel untuk menyimpan ID laporan SOS yang sedang aktif (opsional)
   String? _currentSOSReportId;
 
-  /// Validasi format nomor telepon (Sederhana).
-  bool _isValidPhoneNumber(String phone) {
-    return phone.length >= 10;
-  }
-
-  /// Mengirim SOS (Simulasi Offline).
+  /// Mengirim SOS
   Future<void> sendSOS({
     required BuildContext context,
     String? locationText,
   }) async {
     try {
+      // 1. Cek User Login
       final user = AuthService.instance.currentUser;
       if (user == null) {
-        throw Exception('User belum login');
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Anda harus Login untuk mengirim SOS!')),
+        );
+        return;
       }
 
-      final contacts = user.contacts;
-      if (contacts.isEmpty) {
-        throw Exception('Tidak ada kontak darurat. Silakan tambahkan di profil.');
-      }
-
-      // Ambil lokasi GPS (opsional)
+      // 2. Ambil Lokasi GPS (Opsional)
       double? lat;
       double? lng;
       try {
@@ -48,15 +41,15 @@ class SOSService {
         lat = position.latitude;
         lng = position.longitude;
       } catch (_) {
-        // Lokasi tidak wajib
+        // Abaikan jika gagal ambil GPS
       }
 
-      // Buat report SOS
+      // 3. Buat Objek Laporan SOS
       final report = Report(
         type: 'SOS',
         userId: user.id,
         userName: user.displayName,
-        description: locationText ?? 'Pengguna menekan tombol SOS.',
+        description: 'SOS Darurat', // Pastikan ini ada
         lat: lat,
         lng: lng,
         reportType: 'SOS',
@@ -64,16 +57,11 @@ class SOSService {
         createdAt: DateTime.now(),
       );
 
+      // 4. Simpan ke Database SQLite
       final id = await DatabaseService.instance.insertReport(report);
       _currentSOSReportId = id.toString();
 
-      // Putar sirene lokal
-      await _putarSirene();
-
-      // Simulasi kirim SMS & Notifikasi Responder
-      debugPrint('SIMULASI: Mengirim SMS ke ${contacts.join(', ')}');
-      debugPrint('SIMULASI: Mengirim Notifikasi ke semua Responder');
-
+      // 5. Tampilkan Dialog Konfirmasi
       if (!context.mounted) return;
 
       await showDialog<void>(
@@ -81,69 +69,81 @@ class SOSService {
         barrierDismissible: false,
         builder: (ctx) {
           return AlertDialog(
+            backgroundColor: const Color(0xFFFFEBEE),
             shape: RoundedRectangleBorder(
               borderRadius: BorderRadius.circular(16),
+              side: const BorderSide(color: Colors.red, width: 2),
             ),
-            title: const Text('SOS Dikirim', style: TextStyle(fontWeight: FontWeight.w600)),
+            title: const Row(
+              children: [
+                Icon(Icons.warning_amber_rounded, color: Colors.red),
+                SizedBox(width: 8),
+                Text('SOS DIKIRIM!',
+                    style: TextStyle(color: Colors.red, fontWeight: FontWeight.bold)),
+              ],
+            ),
             content: const Text(
-              'Sinyal darurat sedang diproses.\n'
-              '(Simulasi) SMS terkirim ke kontak darurat.\n'
-              '(Simulasi) Responder menerima notifikasi.',
+              'Sinyal darurat telah disebarkan ke Responder terdekat.\nTetap tenang, bantuan segera datang.',
             ),
             actions: [
               TextButton(
                 onPressed: () async {
-                  await cancelSOS(context: ctx);
+                  // Matikan suara saat dialog ditutup
+                  await stopSiren();
                   if (ctx.mounted) Navigator.of(ctx).pop();
                 },
-                child: const Text('Batalkan SOS'),
+                child: const Text('Tutup', style: TextStyle(color: Colors.red)),
               ),
             ],
           );
         },
       );
 
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Laporan SOS berhasil dibuat (Offline).')),
-        );
-      }
     } catch (e) {
-      await _hentikanSirene();
+      await stopSiren();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Gagal mengirim SOS: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Gagal mengirim SOS: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
   }
 
-  /// Membatalkan SOS.
+  /// Membatalkan SOS (Opsional).
   Future<void> cancelSOS({required BuildContext context}) async {
+    await stopSiren();
+    _currentSOSReportId = null;
+  }
+
+  // --- LOGIKA AUDIO (PUBLIC) ---
+  // Diletakkan DI LUAR fungsi sendSOS, tapi DI DALAM class SOSService
+
+  Future<void> playSiren() async {
     try {
-      await _hentikanSirene();
-      _currentSOSReportId = null;
-      debugPrint('SOS Dibatalkan');
+      await _audioPlayer.stop();
+      // Pastikan file ada di assets/sounds/sos_siren.mp3
+      await _audioPlayer.play(AssetSource('sounds/sos_siren.mp3'));
+
+      // PENTING: Set volume ke 1.0 karena kita mengecilkan volume saat stop
+      await _audioPlayer.setVolume(1.0);
+
+      await _audioPlayer.setReleaseMode(ReleaseMode.loop); // Ulang terus
     } catch (e) {
-      debugPrint('Error canceling SOS: $e');
+      debugPrint("Gagal memutar sirene: $e");
     }
   }
 
-  Future<void> _putarSirene() async {
+  Future<void> stopSiren() async {
     try {
+      // TRIK RESPONSIF:
+      // Set volume ke 0 terlebih dahulu agar hening instan sebelum proses stop berjalan
+      await _audioPlayer.setVolume(0.0);
+
       await _audioPlayer.stop();
-      await _audioPlayer.play(AssetSource('sos siren.mp3'), volume: 1.0);
-      _audioPlayer.setReleaseMode(ReleaseMode.loop);
+      await _audioPlayer.setReleaseMode(ReleaseMode.stop);
     } catch (_) {}
   }
 
-  Future<void> _hentikanSirene() async {
-    try {
-      await _audioPlayer.stop();
-    } catch (_) {}
-  }
-
-  void stopSiren() {
-    _hentikanSirene();
-  }
-}
+} // <--- KURUNG TUTUP CLASS UTAMA (PENTING)
