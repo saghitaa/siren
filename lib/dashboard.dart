@@ -9,6 +9,7 @@ import 'profile.dart';
 import 'report.dart';
 import 'services/database_service.dart';
 import 'services/sos_service.dart';
+import 'services/auth_service.dart'; // <--- IMPORT PENTING
 import 'settings.dart';
 import 'splash.dart';
 
@@ -23,10 +24,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loadingReports = true;
   List<Report> _reports = [];
 
+  // Variabel untuk menampung data user
+  String _displayName = 'Tamu';
+  String _role = 'Warga';
+
   @override
   void initState() {
     super.initState();
+    _loadUserData(); // <--- Ambil data user saat aplikasi dibuka
     _loadReports();
+  }
+
+  // Fungsi untuk mengambil data user yang sedang login
+  void _loadUserData() {
+    final user = AuthService.instance.currentUser;
+    if (user != null) {
+      setState(() {
+        _displayName = user.displayName;
+
+        // Kapitalisasi huruf pertama role (misal: warga -> Warga)
+        if (user.role.isNotEmpty) {
+          _role = "${user.role[0].toUpperCase()}${user.role.substring(1)}";
+        } else {
+          _role = user.role;
+        }
+      });
+    }
   }
 
   Future<void> _loadReports() async {
@@ -104,10 +127,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // --- MAIN CONTENT (SAFEAREA + MATCHED HEADER SPACING) ---
+            // --- MAIN CONTENT ---
             SafeArea(
               child: RefreshIndicator(
-                onRefresh: _loadReports,
+                onRefresh: () async {
+                  _loadUserData();
+                  await _loadReports();
+                },
                 child: SingleChildScrollView(
                   physics: const AlwaysScrollableScrollPhysics(),
                   child: Padding(
@@ -115,7 +141,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const SizedBox(height: 20), // matches ForumScreen
+                        const SizedBox(height: 20),
                         _buildAppBarContent(),
                         const SizedBox(height: 24),
                         _buildProfileHeader(),
@@ -133,7 +159,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
               ),
             ),
 
-            // --- BOTTOM NAV (TWIN) ---
+            // --- BOTTOM NAV ---
             Positioned(
               bottom: 0,
               left: 0,
@@ -147,7 +173,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Widget _buildAppBarContent() {
-    // Same layout as ForumScreen for seamless header alignment
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
@@ -261,13 +286,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Navigator.of(context).push(
           PageRouteBuilder(
             pageBuilder: (context, animation, secondaryAnimation) =>
-                const ProfileScreen(),
+            const ProfileScreen(),
             transitionsBuilder:
                 (context, animation, secondaryAnimation, child) {
               return FadeTransition(opacity: animation, child: child);
             },
           ),
-        );
+        ).then((_) => _loadUserData()); // Refresh data saat kembali dari profile
       },
       child: Container(
         width: double.infinity,
@@ -309,8 +334,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
+                // --- BAGIAN INI SUDAH DINAMIS ---
                 Text(
-                  'Nama Pengguna',
+                  _displayName, // Menggunakan variabel
                   style: GoogleFonts.instrumentSans(
                     color: const Color(0xFF1A2E35),
                     fontSize: 18,
@@ -320,7 +346,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 const SizedBox(height: 4),
                 Container(
                   padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: ShapeDecoration(
                     gradient: const LinearGradient(
                       begin: Alignment(0.50, 0.00),
@@ -334,13 +360,14 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     ),
                   ),
                   child: Text(
-                    'Warga',
+                    _role, // Menggunakan variabel
                     style: GoogleFonts.instrumentSans(
                       color: const Color(0xFF1A2E35),
                       fontSize: 12,
                     ),
                   ),
                 ),
+                // --------------------------------
                 const SizedBox(height: 6),
                 Row(
                   children: [
@@ -380,7 +407,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
         GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            // Panggil layanan SOS ketika tombol darurat ditekan.
             SOSService.instance.sendSOS(
               context: context,
               locationText: 'Lokasi tidak spesifik (contoh).',
@@ -600,7 +626,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         color: Color(0x99192D34), size: 12),
                     const SizedBox(width: 4),
                     Text(
-                      report.lat != null && report.lng != null 
+                      report.lat != null && report.lng != null
                           ? '${report.lat}, ${report.lng}'
                           : 'Lokasi tidak disebutkan',
                       style: GoogleFonts.instrumentSans(
@@ -631,34 +657,39 @@ class _DashboardScreenState extends State<DashboardScreen> {
           ),
         ),
         const SizedBox(height: 12),
-      _buildMenuCard(
-        title: 'Pengaturan',
-        icon: Icons.settings_outlined,
-        iconBgColor: const Color(0x334ADEDE), 
-        color: const Color(0xFF1A2E35),
-        onTap: () {
-          HapticFeedback.lightImpact();
-          Navigator.of(context).push(
-            MaterialPageRoute(
-              builder: (_) => const SettingsScreen(),
-            ),
-          );
-        },
-      ),
+        _buildMenuCard(
+          title: 'Pengaturan',
+          icon: Icons.settings_outlined,
+          iconBgColor: const Color(0x334ADEDE),
+          color: const Color(0xFF1A2E35),
+          onTap: () {
+            HapticFeedback.lightImpact();
+            Navigator.of(context).push(
+              MaterialPageRoute(
+                builder: (_) => const SettingsScreen(),
+              ),
+            );
+          },
+        ),
         const SizedBox(height: 8),
         _buildMenuCard(
           title: 'Keluar',
           icon: Icons.logout_outlined,
           iconBgColor: const Color(0x33FF6464),
           color: const Color(0xFFE7000B),
-          onTap: () {
+          onTap: () async {
             HapticFeedback.lightImpact();
-            // ⬇️ Logout: balik ke splash & bersihin semua route
+            // Logout dari AuthService
+            await AuthService.instance.signOut();
+
+            if (!mounted) return;
+
+            // Navigasi balik ke Splash/SignIn
             Navigator.of(context).pushAndRemoveUntil(
               MaterialPageRoute(
                 builder: (_) => const SplashScreen(),
               ),
-              (route) => false,
+                  (route) => false,
             );
           },
         ),
@@ -720,9 +751,8 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
-  // --- TWIN BOTTOM NAV: ACTIVE = DASHBOARD (CENTER) ---
   Widget _buildBottomNav() {
-    const int activeIndex = 1; // 0=Forum, 1=Dashboard, 2=Reports
+    const int activeIndex = 1;
 
     return Container(
       width: double.infinity,
@@ -777,7 +807,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           PageRouteBuilder(
                             pageBuilder:
                                 (context, animation, secondaryAnimation) =>
-                                    const ForumScreen(),
+                            const ForumScreen(),
                             transitionsBuilder: (context, animation,
                                 secondaryAnimation, child) {
                               return FadeTransition(
@@ -813,7 +843,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                           PageRouteBuilder(
                             pageBuilder:
                                 (context, animation, secondaryAnimation) =>
-                                    const ReportScreen(),
+                            const ReportScreen(),
                             transitionsBuilder: (context, animation,
                                 secondaryAnimation, child) {
                               return FadeTransition(
@@ -829,7 +859,6 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 ],
               ),
 
-              // Active lime donut
               Positioned(
                 top: -25,
                 left: slotWidth * activeIndex + slotWidth / 2 - 30,
@@ -875,7 +904,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
     required VoidCallback onTap,
   }) {
     final Color color =
-        isActive ? const Color(0xFF1A2E35) : const Color(0x7F192D34);
+    isActive ? const Color(0xFF1A2E35) : const Color(0x7F192D34);
 
     return InkWell(
       onTap: onTap,
@@ -890,17 +919,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
               height: 40,
               decoration: ShapeDecoration(
                 color:
-                    isActive ? const Color(0x11A3E42F) : Colors.transparent,
+                isActive ? const Color(0x11A3E42F) : Colors.transparent,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(14),
                 ),
               ),
               child: isActive
-                  ? const SizedBox.shrink() //
+                  ? const SizedBox.shrink()
                   : Icon(icon, color: color, size: 24),
             ),
             const SizedBox(height: 4),
-            // Hide label visually when active so the donut has no text under it
             if (!isActive)
               Text(
                 label,

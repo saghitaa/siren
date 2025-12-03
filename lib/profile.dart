@@ -2,6 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 
+// Import AuthService dan Model User
+import 'services/auth_service.dart';
+import 'models/user_model.dart';
+
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
 
@@ -10,14 +14,56 @@ class ProfileScreen extends StatefulWidget {
 }
 
 class _ProfileScreenState extends State<ProfileScreen> {
-  final String _name = 'Christopher Bang';
-  final String _email = 'chris.bang@example.com';
-  final String _phone = '+62 812 3456 7890';
-  final String _location = 'Gunungpati, Kota Semarang';
+  // Variabel data user
+  late User? _currentUser;
+  String _name = '';
+  String _email = '';
+  String _phone = '';
+  String _role = '';
+  String _location = 'Indonesia'; // Default karena belum ada fitur GPS/Alamat di database
 
-  final List<Map<String, String>> _emergencyContacts = [
-    {'label': 'Ma Fren - Budi Santoso', 'phone': '+62 811 2222 3333'},
-  ];
+  // List kontak untuk UI
+  List<Map<String, String>> _emergencyContacts = [];
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserData();
+  }
+
+  void _loadUserData() {
+    // 1. Ambil user yang sedang login dari AuthService
+    _currentUser = AuthService.instance.currentUser;
+
+    if (_currentUser != null) {
+      setState(() {
+        _name = _currentUser!.displayName;
+        _email = _currentUser!.email;
+        _phone = _currentUser!.phone;
+        _role = _currentUser!.role;
+
+        // 2. Mapping kontak dari List<String> ke format UI
+        // Karena di database cuma simpan nomor, kita beri label otomatis "Kontak 1", "Kontak 2", dst.
+        int index = 1;
+        _emergencyContacts = _currentUser!.contacts.map((contact) {
+          return {
+            'label': 'Kontak Darurat $index', // Label otomatis
+            'phone': contact,
+          };
+        }).toList();
+
+        // Increment index untuk label berikutnya (workaround sederhana)
+        // Note: Logic map di atas immutable, jika butuh index dinamis bisa pakai for loop
+        _emergencyContacts = [];
+        for (var contact in _currentUser!.contacts) {
+          _emergencyContacts.add({
+            'label': 'Kerabat / Teman ${index++}',
+            'phone': contact
+          });
+        }
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,7 +81,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         ),
         child: Stack(
           children: [
-            // BACKGROUND BLURS
+            // --- BACKGROUND BLURS ---
             Positioned(
               left: 92,
               top: -73,
@@ -85,7 +131,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
             ),
 
-            // MAIN CONTENT
+            // --- MAIN CONTENT ---
             SafeArea(
               child: SingleChildScrollView(
                 padding: const EdgeInsets.symmetric(horizontal: 24),
@@ -167,6 +213,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             width: 120,
             height: 120,
             decoration: ShapeDecoration(
+              color: Colors.white,
               shape: RoundedRectangleBorder(
                 side: const BorderSide(width: 1.15, color: Color(0x4C4ADEDE)),
                 borderRadius: BorderRadius.circular(24),
@@ -181,10 +228,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
             child: ClipRRect(
               borderRadius: BorderRadius.circular(24),
-              child: Image.network(
-                "https://placehold.co/200x200",
+              child: _currentUser?.profileImageUrl != null
+                  ? Image.network(
+                _currentUser!.profileImageUrl!,
                 fit: BoxFit.cover,
-              ),
+                errorBuilder: (ctx, _, __) => _buildInitials(),
+              )
+                  : _buildInitials(),
             ),
           ),
           Positioned(
@@ -192,7 +242,11 @@ class _ProfileScreenState extends State<ProfileScreen> {
             bottom: -4,
             child: InkWell(
               borderRadius: BorderRadius.circular(16),
-              onTap: () {},
+              onTap: () {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Fitur ubah foto belum tersedia di demo ini.')),
+                );
+              },
               child: Container(
                 width: 48,
                 height: 48,
@@ -224,18 +278,59 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildInitials() {
+    String initials = "U";
+    if (_name.isNotEmpty) {
+      initials = _name.trim().split(' ').map((e) => e[0]).take(2).join();
+    }
+    return Container(
+      color: Colors.grey.shade200,
+      child: Center(
+        child: Text(
+          initials.toUpperCase(),
+          style: GoogleFonts.orbitron(
+            fontSize: 40,
+            fontWeight: FontWeight.bold,
+            color: const Color(0xFF1A2E35),
+          ),
+        ),
+      ),
+    );
+  }
+
   // PERSONAL INFO
   Widget _buildPersonalInfo() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Informasi Pribadi',
-          style: GoogleFonts.instrumentSans(
-            color: const Color(0xFF1A2E35),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            Text(
+              'Informasi Pribadi',
+              style: GoogleFonts.instrumentSans(
+                color: const Color(0xFF1A2E35),
+                fontSize: 16,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+              decoration: BoxDecoration(
+                color: const Color(0x194ADEDE),
+                borderRadius: BorderRadius.circular(6),
+                border: Border.all(color: const Color(0x4C4ADEDE)),
+              ),
+              child: Text(
+                _role.toUpperCase(),
+                style: GoogleFonts.instrumentSans(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: const Color(0xFF1A2E35),
+                ),
+              ),
+            )
+          ],
         ),
         const SizedBox(height: 16),
 
@@ -285,7 +380,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               const SizedBox(width: 12),
               Expanded(
                 child: Text(
-                  value,
+                  value.isEmpty ? '-' : value,
                   style: GoogleFonts.instrumentSans(
                     color: const Color(0x7F192D34),
                     fontSize: 14,
@@ -323,21 +418,33 @@ class _ProfileScreenState extends State<ProfileScreen> {
         const SizedBox(height: 16),
 
         // List of contacts
-        Column(
-          children: [
-            for (int i = 0; i < _emergencyContacts.length; i++)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 12),
-                child: _contactCard(
-                  label: _emergencyContacts[i]['label']!,
-                  phone: _emergencyContacts[i]['phone']!,
-                  index: i,
-                ),
+        if (_emergencyContacts.isEmpty)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 16.0),
+            child: Text(
+              "Belum ada kontak darurat.",
+              style: GoogleFonts.instrumentSans(
+                  fontStyle: FontStyle.italic,
+                  color: const Color(0x66192D34)
               ),
+            ),
+          )
+        else
+          Column(
+            children: [
+              for (int i = 0; i < _emergencyContacts.length; i++)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 12),
+                  child: _contactCard(
+                    label: _emergencyContacts[i]['label']!,
+                    phone: _emergencyContacts[i]['phone']!,
+                    index: i,
+                  ),
+                ),
+            ],
+          ),
 
-            _addContactButton(),
-          ],
-        ),
+        _addContactButton(),
       ],
     );
   }
@@ -428,7 +535,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
       builder: (context) {
         return AlertDialog(
           shape:
-              RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
+          RoundedRectangleBorder(borderRadius: BorderRadius.circular(18)),
           title: Text(
             'Hapus Kontak?',
             style: GoogleFonts.instrumentSans(
@@ -438,7 +545,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
             ),
           ),
           content: Text(
-            'Kontak darurat ini akan dihapus secara permanen.',
+            'Kontak darurat ini akan dihapus dari tampilan (Simulasi).',
             style: GoogleFonts.instrumentSans(
               color: const Color(0x99192D34),
               fontSize: 14,
@@ -658,8 +765,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
           elevation: 6,
         ),
         onPressed: () {
+          // TODO: Implementasi update ke Database (Belum ada di DatabaseService)
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Perubahan disimpan')),
+            const SnackBar(content: Text('Simulasi: Perubahan disimpan sementara.')),
           );
         },
         child: Text(

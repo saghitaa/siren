@@ -3,7 +3,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'dart:ui';
 import 'login.dart';
 import 'signin_loading.dart';
-import 'services/auth_service.dart'; // <--- THIS WAS MISSING
+import 'services/auth_service.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -17,6 +17,9 @@ class _SignInScreenState extends State<SignInScreen> {
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
+
+  // Variable untuk menyimpan pilihan role
+  String _selectedRole = 'warga';
 
   bool _isButtonEnabled = false;
   bool _isPasswordObscured = true;
@@ -86,6 +89,7 @@ class _SignInScreenState extends State<SignInScreen> {
         ),
         child: Stack(
           children: [
+            // --- Background Circles ---
             Positioned(
               left: -48,
               top: 726,
@@ -125,6 +129,8 @@ class _SignInScreenState extends State<SignInScreen> {
                 ),
               ),
             ),
+
+            // --- Main Content ---
             SafeArea(
               child: SingleChildScrollView(
                 child: Padding(
@@ -132,7 +138,7 @@ class _SignInScreenState extends State<SignInScreen> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.center,
                     children: [
-                      const SizedBox(height: 60),
+                      const SizedBox(height: 40), // Sedikit dikurangi agar muat
                       Container(
                         width: 74,
                         height: 74,
@@ -180,7 +186,7 @@ class _SignInScreenState extends State<SignInScreen> {
                           letterSpacing: 0.28,
                         ),
                       ),
-                      const SizedBox(height: 40),
+                      const SizedBox(height: 30),
                       Text(
                         "Buat Akun",
                         textAlign: TextAlign.center,
@@ -191,6 +197,7 @@ class _SignInScreenState extends State<SignInScreen> {
                         ),
                       ),
                       const SizedBox(height: 24),
+
                       _buildTextField(
                         controller: _nameController,
                         label: "Nama Pengguna",
@@ -206,6 +213,11 @@ class _SignInScreenState extends State<SignInScreen> {
                         keyboardType: TextInputType.emailAddress,
                         textInputAction: TextInputAction.next,
                       ),
+
+                      // --- DROPDOWN PILIH ROLE BARU ---
+                      _buildRoleDropdown(),
+                      // -------------------------------
+
                       _buildPasswordTextField(
                         controller: _passwordController,
                         label: "Kata Sandi",
@@ -235,28 +247,27 @@ class _SignInScreenState extends State<SignInScreen> {
                         },
                       ),
                       const SizedBox(height: 24),
-                      // --- FIXED BUTTON ---
+
+                      // --- TOMBOL DAFTAR ---
                       GestureDetector(
                         onTap: _isButtonEnabled
                             ? () async {
-                          // 1. Tampilkan loading
                           ScaffoldMessenger.of(context).showSnackBar(
                             const SnackBar(content: Text('Mendaftarkan akun...')),
                           );
 
-                          // 2. Panggil AuthService untuk simpan ke SQLite
+                          // PENTING: Gunakan _selectedRole di sini!
                           final bool success = await AuthService.instance.signUpWithEmail(
                             email: _emailController.text.trim(),
                             password: _passwordController.text.trim(),
                             name: _nameController.text.trim(),
-                            phone: "081234567890",
-                            role: "warga",
+                            phone: "081234567890", // Dummy phone
+                            role: _selectedRole, // <-- Menggunakan pilihan user
                           );
 
                           if (!context.mounted) return;
 
                           if (success) {
-                            // 3. Jika Sukses, Navigasi ke Loading
                             Navigator.of(context).pushReplacement(
                               PageRouteBuilder(
                                 pageBuilder: (context, animation, secondaryAnimation) =>
@@ -270,10 +281,9 @@ class _SignInScreenState extends State<SignInScreen> {
                               ),
                             );
                           } else {
-                            // 4. Jika Gagal
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
-                                content: Text('Gagal mendaftar. Email mungkin sudah terpakai.'),
+                                content: Text('Gagal: Email mungkin sudah terdaftar.'),
                                 backgroundColor: Colors.red,
                               ),
                             );
@@ -319,14 +329,12 @@ class _SignInScreenState extends State<SignInScreen> {
                           ),
                         ),
                       ),
-                      // --- END FIXED BUTTON ---
                       const SizedBox(height: 24),
                       Row(
                         children: [
                           Expanded(child: _buildDivider()),
                           Padding(
-                            padding:
-                            const EdgeInsets.symmetric(horizontal: 12.0),
+                            padding: const EdgeInsets.symmetric(horizontal: 12.0),
                             child: Text(
                               "ATAU",
                               style: GoogleFonts.instrumentSans(
@@ -343,19 +351,15 @@ class _SignInScreenState extends State<SignInScreen> {
                         onTap: () {
                           Navigator.of(context).pushReplacement(
                             PageRouteBuilder(
-                              pageBuilder:
-                                  (context, animation, secondaryAnimation) =>
+                              pageBuilder: (context, animation, secondaryAnimation) =>
                               const LoginScreen(),
-                              transitionsBuilder: (context, animation,
-                                  secondaryAnimation, child) {
+                              transitionsBuilder: (context, animation, secondaryAnimation, child) {
                                 return FadeTransition(
-                                  opacity: animation
-                                      .drive(CurveTween(curve: Curves.easeIn)),
+                                  opacity: animation.drive(CurveTween(curve: Curves.easeIn)),
                                   child: child,
                                 );
                               },
-                              transitionDuration:
-                              const Duration(milliseconds: 300),
+                              transitionDuration: const Duration(milliseconds: 300),
                             ),
                           );
                         },
@@ -412,6 +416,72 @@ class _SignInScreenState extends State<SignInScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  // --- WIDGET DROPDOWN PILIHAN ROLE ---
+  Widget _buildRoleDropdown() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          "Daftar Sebagai",
+          style: GoogleFonts.instrumentSans(
+            color: const Color(0xFF1A2E35),
+            fontSize: 14,
+            fontWeight: FontWeight.w400,
+            letterSpacing: 0.15,
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            color: const Color(0xCCFFFFFF),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: const Color(0x334ADEDE), width: 1.16),
+          ),
+          child: DropdownButtonHideUnderline(
+            child: DropdownButton<String>(
+              value: _selectedRole,
+              isExpanded: true,
+              icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Color(0x99192D34)),
+              style: GoogleFonts.instrumentSans(
+                color: const Color(0xFF1A2E35),
+                fontSize: 16,
+              ),
+              items: const [
+                DropdownMenuItem(
+                  value: 'warga',
+                  child: Row(
+                    children: [
+                      Icon(Icons.person_outline, size: 20, color: Color(0x99192D34)),
+                      SizedBox(width: 12),
+                      Text('Warga'),
+                    ],
+                  ),
+                ),
+                DropdownMenuItem(
+                  value: 'responder',
+                  child: Row(
+                    children: [
+                      Icon(Icons.shield_outlined, size: 20, color: Color(0x99192D34)),
+                      SizedBox(width: 12),
+                      Text('Responder (Petugas)'),
+                    ],
+                  ),
+                ),
+              ],
+              onChanged: (String? newValue) {
+                setState(() {
+                  _selectedRole = newValue!;
+                });
+              },
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+      ],
     );
   }
 
