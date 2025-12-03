@@ -9,9 +9,9 @@
     <uses-permission android:name="android.permission.CALL_PHONE" />
 
     <application
-        android:label="siren_application"
+        android:label="SIREN"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/launcher_icon">
         <activity
             android:name=".MainActivity"
             android:exported="true"

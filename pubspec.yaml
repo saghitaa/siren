@@ -14,19 +14,21 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # === Mobile utilities ===
-  geolocator: ^10.1.0
   audioplayers: ^5.2.0
   url_launcher: ^6.3.0
   sqflite: ^2.3.0
   path_provider: ^2.1.0
 
-  # Firebase packages have been removed for the full SQLite implementation.
-  # We will add flutter_local_notifications later.
+  # Dependencies untuk koordinat di laporan
+  geolocator: ^10.1.0
+  latlong2: ^0.9.0
+  flutter_map: ^6.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^4.0.0
+  flutter_launcher_icons: ^0.13.1
 
 flutter:
   uses-material-design: true
@@ -34,3 +36,12 @@ flutter:
   assets:
     - assets/images/
     - assets/sounds/
+
+flutter_launcher_icons:
+  android: "launcher_icon"
+  ios: true
+  image_path: "assets/images/siren.png"
+  min_sdk_android: 21
+
+  adaptive_icon_background: "#4ADEDE"
+  adaptive_icon_foreground: "assets/images/siren.png"

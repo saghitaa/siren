@@ -625,15 +625,21 @@ class _DashboardScreenState extends State<DashboardScreen> {
                     const Icon(Icons.location_on_outlined,
                         color: Color(0x99192D34), size: 12),
                     const SizedBox(width: 4),
-                    Text(
-                      report.lat != null && report.lng != null
-                          ? '${report.lat}, ${report.lng}'
-                          : 'Lokasi tidak disebutkan',
-                      style: GoogleFonts.instrumentSans(
-                        color: const Color(0x99192D34),
-                        fontSize: 11,
+                    // --- PERBAIKAN DI SINI ---
+                    Expanded( // 1. Bungkus dengan Expanded
+                      child: Text(
+                        report.lat != null && report.lng != null
+                            ? '${report.lat}, ${report.lng}'
+                            : 'Lokasi tidak disebutkan',
+                        style: GoogleFonts.instrumentSans(
+                          color: const Color(0x99192D34),
+                          fontSize: 11,
+                        ),
+                        maxLines: 1, // 2. Batasi hanya 1 baris
+                        overflow: TextOverflow.ellipsis, // 3. Ganti sisa teks dengan "..."
                       ),
                     ),
+                    // -------------------------
                   ],
                 ),
               ],
