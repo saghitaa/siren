@@ -6,11 +6,12 @@ class User {
   final String id;
   final String displayName;
   final String phone;
-  final String email; // Tambahan untuk login
+  final String email;
   final String role; // 'warga' atau 'responder'
-  final List<String> contacts; // Disimpan sebagai string dipisahkan koma
+  final List<String> contacts;
   final String? profileImageUrl;
   final DateTime createdAt;
+  final String status; // 'Online' atau 'Offline' (BARU)
 
   const User({
     required this.id,
@@ -21,9 +22,9 @@ class User {
     required this.contacts,
     this.profileImageUrl,
     required this.createdAt,
+    this.status = 'Offline', // Default Offline
   });
 
-  // --- BAGIAN INI YANG HILANG DAN PERLU DITAMBAHKAN ---
   User copyWith({
     String? id,
     String? displayName,
@@ -33,6 +34,7 @@ class User {
     List<String>? contacts,
     String? profileImageUrl,
     DateTime? createdAt,
+    String? status,
   }) {
     return User(
       id: id ?? this.id,
@@ -43,9 +45,9 @@ class User {
       contacts: contacts ?? this.contacts,
       profileImageUrl: profileImageUrl ?? this.profileImageUrl,
       createdAt: createdAt ?? this.createdAt,
+      status: status ?? this.status,
     );
   }
-  // ----------------------------------------------------
 
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
@@ -57,6 +59,7 @@ class User {
       contacts: (map['kontak_darurat'] as String?)?.split(',') ?? [],
       profileImageUrl: map['foto_profil'] as String?,
       createdAt: DateTime.fromMillisecondsSinceEpoch(map['dibuat_pada'] as int),
+      status: map['status'] ?? 'Offline', // Ambil status dari DB
     );
   }
 
@@ -69,6 +72,7 @@ class User {
       'kontak_darurat': contacts.join(','),
       'foto_profil': profileImageUrl,
       'dibuat_pada': createdAt.millisecondsSinceEpoch,
+      'status': status, // Simpan status
     };
   }
 }

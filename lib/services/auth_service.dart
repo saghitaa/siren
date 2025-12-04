@@ -1,37 +1,32 @@
 import 'dart:async';
-
+import 'package:flutter/foundation.dart';
 import '../models/user_model.dart';
 import 'database_service.dart';
-import 'package:flutter/foundation.dart'; // Wajib untuk notifyListeners/ChangeNotifier
 
 class AuthService extends ChangeNotifier {
   AuthService._internal();
   static final AuthService instance = AuthService._internal();
 
-  // Stream controller untuk memberitahu UI tentang perubahan status auth
   final _authStateController = StreamController<User?>.broadcast();
-
   User? _currentUser;
 
   User? get currentUser => _currentUser;
   Stream<User?> get authStateChanges => _authStateController.stream;
 
-  /// Sign in dengan email & password (cek database lokal).
-  Future<User?> signInWithEmail(String email, String password) async {
-    // PENTING: Inisialisasi DB di sini
+  Future<void> init() async {
     await DatabaseService.instance.init();
+  }
 
+  Future<User?> signInWithEmail(String email, String password) async {
     final user = await DatabaseService.instance.login(email, password);
-
     if (user != null) {
       _currentUser = user;
       _authStateController.add(user);
-      notifyListeners(); // Memberi tahu widget lain
+      notifyListeners();
     }
     return user;
   }
 
-  /// Sign up dengan email & password (simpan ke database lokal).
   Future<bool> signUpWithEmail({
     required String email,
     required String password,
@@ -40,61 +35,85 @@ class AuthService extends ChangeNotifier {
     required String role,
   }) async {
     try {
-      // PENTING: Inisialisasi DB di sini
-      await DatabaseService.instance.init();
-
       final newUser = User(
-        id: 'temp_id',
+        id: 'temp_id', // Akan diabaikan oleh DB
         displayName: name,
         phone: phone,
         email: email,
         role: role,
         contacts: [],
         createdAt: DateTime.now(),
+        status: 'Offline', // Default saat daftar
       );
 
       await DatabaseService.instance.registerUser(newUser, password);
-
       await signInWithEmail(email, password);
       return true;
     } catch (e) {
+      debugPrint("SignUp Gagal: $e");
       return false;
     }
   }
 
-  /// Sign out.
   Future<void> signOut() async {
+    // Sebelum logout, set status jadi offline
+    if (_currentUser != null) {
+      await updateUserStatus('Offline');
+    }
     _currentUser = null;
     _authStateController.add(null);
     notifyListeners();
   }
 
-  // --- FUNGSI updateProfile (DIPERLUKAN OLEH PROFILE SCREEN) ---
   Future<void> updateProfile({
     required String name,
     required String email,
     required String phone,
     String? photoPath,
-    List<String>? contacts, // List kontak baru
+    List<String>? contacts,
+    String? role,
   }) async {
     if (_currentUser == null) return;
 
-    await DatabaseService.instance.init();
+    // Ambil status terakhir dari DB, JANGAN TIMPA
+    final latestUser = await DatabaseService.instance.getUserById(int.parse(_currentUser!.id));
 
-    // Baris ini memanggil copyWith, yang akan diperbaiki di file User Model
     final updatedUser = _currentUser!.copyWith(
       displayName: name,
       email: email,
       phone: phone,
       profileImageUrl: photoPath ?? _currentUser!.profileImageUrl,
       contacts: contacts ?? _currentUser!.contacts,
+      role: role ?? _currentUser!.role,
+      status: latestUser?.status ?? _currentUser!.status, // Pertahankan status terakhir
     );
 
-    // Baris ini memanggil updateUser, yang akan diperbaiki di file Database Service
     await DatabaseService.instance.updateUser(updatedUser);
 
     _currentUser = updatedUser;
     _authStateController.add(updatedUser);
-    notifyListeners(); // Wajib dipanggil untuk widget Listener
+    notifyListeners();
+  }
+
+  Future<void> updateUserStatus(String status) async {
+    if (_currentUser == null) return;
+
+    await DatabaseService.instance.updateUserStatus(_currentUser!.id, status);
+
+    final updatedUser = _currentUser!.copyWith(status: status);
+    _currentUser = updatedUser;
+    
+    _authStateController.add(updatedUser);
+    notifyListeners();
+  }
+
+  Future<void> refreshCurrentUser() async {
+    if (_currentUser == null) return;
+    final user = await DatabaseService.instance.getUserById(int.parse(_currentUser!.id));
+    if (user != null) {
+      _currentUser = user;
+      _authStateController.add(user);
+      notifyListeners();
+    }
   }
 }

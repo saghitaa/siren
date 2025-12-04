@@ -38,7 +38,9 @@ class _LoginLoadingScreenState extends State<LoginLoadingScreen>
 
     Widget nextScreen;
     if (user != null) {
-      if (user.role.toLowerCase() == 'responder') {
+      // Perbaikan logika: Cek apakah role BUKAN 'warga'
+      // Karena responder bisa 'polisi', 'pemadam', dll.
+      if (user.role.toLowerCase() != 'warga') {
         nextScreen = const ResponderDashboardScreen();
       } else {
         nextScreen = const DashboardScreen();
