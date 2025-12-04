@@ -23,6 +23,30 @@ class User {
     required this.createdAt,
   });
 
+  // --- BAGIAN INI YANG HILANG DAN PERLU DITAMBAHKAN ---
+  User copyWith({
+    String? id,
+    String? displayName,
+    String? phone,
+    String? email,
+    String? role,
+    List<String>? contacts,
+    String? profileImageUrl,
+    DateTime? createdAt,
+  }) {
+    return User(
+      id: id ?? this.id,
+      displayName: displayName ?? this.displayName,
+      phone: phone ?? this.phone,
+      email: email ?? this.email,
+      role: role ?? this.role,
+      contacts: contacts ?? this.contacts,
+      profileImageUrl: profileImageUrl ?? this.profileImageUrl,
+      createdAt: createdAt ?? this.createdAt,
+    );
+  }
+  // ----------------------------------------------------
+
   factory User.fromMap(Map<String, dynamic> map) {
     return User(
       id: map['id'].toString(),

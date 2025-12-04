@@ -1,18 +1,20 @@
+import 'dart:io'; // WAJIB: Untuk menampilkan file foto lokal
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:flutter/services.dart';
-import 'dart:ui';
 
+// Import halaman dan service yang dibutuhkan
+import 'profile.dart';
+import 'services/auth_service.dart';
+import 'services/sos_service.dart';
+import 'services/database_service.dart';
 import 'forum.dart';
 import 'models/report_model.dart';
-import 'profile.dart';
 import 'report.dart';
-import 'services/database_service.dart';
-import 'services/sos_service.dart';
-import 'services/auth_service.dart';
 import 'settings.dart';
 import 'splash.dart';
-import 'notification_screen.dart'; // Pastikan file ini ada di folder lib
+import 'notification_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -25,9 +27,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
   bool _loadingReports = true;
   List<Report> _reports = [];
 
-  // Variabel untuk menampung data user
+  // Variabel data user
   String _displayName = 'Tamu';
   String _role = 'Warga';
+  String? _photoProfilePath; // Variabel untuk menyimpan path foto
 
   @override
   void initState() {
@@ -36,12 +39,16 @@ class _DashboardScreenState extends State<DashboardScreen> {
     _loadReports();
   }
 
-  // Fungsi untuk mengambil data user yang sedang login
+  // --- FUNGSI LOAD DATA USER ---
   void _loadUserData() {
+    // Ambil data terbaru dari memory AuthService (yang sudah diupdate di ProfileScreen)
     final user = AuthService.instance.currentUser;
+
     if (user != null) {
       setState(() {
         _displayName = user.displayName;
+        _photoProfilePath = user.profileImageUrl; // Update path foto
+
         if (user.role.isNotEmpty) {
           _role = "${user.role[0].toUpperCase()}${user.role.substring(1)}";
         } else {
@@ -51,7 +58,20 @@ class _DashboardScreenState extends State<DashboardScreen> {
     }
   }
 
+  // --- FUNGSI NAVIGASI KE PROFIL ---
+  Future<void> _goToProfile() async {
+    // await menunggu sampai user kembali dari halaman profile
+    await Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const ProfileScreen()),
+    );
+
+    // Setelah kembali, panggil ini untuk memperbarui foto/nama di dashboard
+    _loadUserData();
+  }
+
   Future<void> _loadReports() async {
+    await DatabaseService.instance.init();
     final data = await DatabaseService.instance.getAllReports();
     if (!mounted) return;
     setState(() {
@@ -86,42 +106,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
           children: [
             // --- BACKGROUND BLURS ---
             Positioned(
-              left: -48,
-              top: 726,
+              left: -48, top: 726,
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
                 child: Opacity(
                   opacity: 0.59,
-                  child: Container(
-                    width: 493,
-                    height: 367,
-                    decoration: ShapeDecoration(
-                      color: const Color(0x331A2E35),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(38835400),
-                      ),
-                    ),
-                  ),
+                  child: Container(width: 493, height: 367, decoration: ShapeDecoration(color: const Color(0x331A2E35), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(38835400)))),
                 ),
               ),
             ),
             Positioned(
-              left: -84,
-              top: -169,
+              left: -84, top: -169,
               child: ImageFiltered(
                 imageFilter: ImageFilter.blur(sigmaX: 50, sigmaY: 50),
                 child: Opacity(
                   opacity: 0.59,
-                  child: Container(
-                    width: 558,
-                    height: 283,
-                    decoration: ShapeDecoration(
-                      color: const Color(0x704ADEDE),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(38835400),
-                      ),
-                    ),
-                  ),
+                  child: Container(width: 558, height: 283, decoration: ShapeDecoration(color: const Color(0x704ADEDE), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(38835400)))),
                 ),
               ),
             ),
@@ -143,7 +143,10 @@ class _DashboardScreenState extends State<DashboardScreen> {
                         const SizedBox(height: 20),
                         _buildAppBarContent(),
                         const SizedBox(height: 24),
+
+                        // HEADER PROFIL (FOTO MUNCUL DI SINI)
                         _buildProfileHeader(),
+
                         const SizedBox(height: 24),
                         _buildEmergencyButton(),
                         const SizedBox(height: 24),
@@ -159,12 +162,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
             ),
 
             // --- BOTTOM NAV ---
-            Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              child: _buildBottomNav(),
-            ),
+            Positioned(bottom: 0, left: 0, right: 0, child: _buildBottomNav()),
           ],
         ),
       ),
@@ -178,106 +176,44 @@ class _DashboardScreenState extends State<DashboardScreen> {
         Row(
           children: [
             Container(
-              width: 47,
-              height: 47,
+              width: 47, height: 47,
               decoration: ShapeDecoration(
-                gradient: const LinearGradient(
-                  begin: Alignment(0.50, 0.00),
-                  end: Alignment(0.50, 1.00),
-                  colors: [Color(0x4C4ADEDE), Color(0x5FA3E42F)],
-                ),
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 1.16, color: Color(0xB2FFFFFF)),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                gradient: const LinearGradient(begin: Alignment(0.50, 0.00), end: Alignment(0.50, 1.00), colors: [Color(0x4C4ADEDE), Color(0x5FA3E42F)]),
+                shape: RoundedRectangleBorder(side: const BorderSide(width: 1.16, color: Color(0xB2FFFFFF)), borderRadius: BorderRadius.circular(16)),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Padding(
-                  padding: const EdgeInsets.all(5.0),
-                  child: Image.asset(
-                    'assets/images/siren.png',
-                    fit: BoxFit.contain,
-                    errorBuilder: (context, error, stackTrace) {
-                      return const Icon(Icons.warning, color: Colors.orange);
-                    },
-                  ),
-                ),
+                child: Padding(padding: const EdgeInsets.all(5.0), child: Image.asset('assets/images/siren.png', fit: BoxFit.contain, errorBuilder: (context, error, stackTrace) => const Icon(Icons.warning, color: Colors.orange))),
               ),
             ),
             const SizedBox(width: 12),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  'SIREN',
-                  style: GoogleFonts.orbitron(
-                    color: const Color(0xFF1A2E35),
-                    fontSize: 16,
-                    fontWeight: FontWeight.w400,
-                    letterSpacing: 4,
-                  ),
-                ),
-                Text(
-                  'Smart Integrated Report...',
-                  style: GoogleFonts.instrumentSans(
-                    color: const Color(0x99192D34),
-                    fontSize: 10,
-                  ),
-                ),
+                Text('SIREN', style: GoogleFonts.orbitron(color: const Color(0xFF1A2E35), fontSize: 16, fontWeight: FontWeight.w400, letterSpacing: 4)),
+                Text('Smart Integrated Report...', style: GoogleFonts.instrumentSans(color: const Color(0x99192D34), fontSize: 10)),
               ],
             ),
           ],
         ),
-        // Tombol Lonceng (Notifikasi)
         GestureDetector(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(builder: (context) => const NotificationScreen()),
-            );
+            Navigator.push(context, MaterialPageRoute(builder: (context) => const NotificationScreen()));
           },
           child: Stack(
             clipBehavior: Clip.none,
             children: [
               Container(
-                width: 42,
-                height: 42,
-                decoration: const ShapeDecoration(
-                  color: Color(0x99FFFFFF),
-                  shape: OvalBorder(
-                    side: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
-                  ),
-                ),
-                child: const Icon(Icons.notifications_none_outlined,
-                    color: Color(0xFF1A2E35), size: 22),
+                width: 42, height: 42,
+                decoration: const ShapeDecoration(color: Color(0x99FFFFFF), shape: OvalBorder(side: BorderSide(width: 1.16, color: Color(0x334ADEDE)))),
+                child: const Icon(Icons.notifications_none_outlined, color: Color(0xFF1A2E35), size: 22),
               ),
               Positioned(
-                right: -3,
-                top: -3,
+                right: -3, top: -3,
                 child: Container(
-                  width: 16,
-                  height: 16,
-                  decoration: const ShapeDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment(0.50, 0.00),
-                      end: Alignment(0.50, 1.00),
-                      colors: [Color(0xFF4ADEDE), Color(0xFFA3E42F)],
-                    ),
-                    shape: OvalBorder(
-                      side: BorderSide(width: 1.16, color: Colors.white),
-                    ),
-                  ),
-                  child: Center(
-                    child: Text(
-                      '!',
-                      style: GoogleFonts.instrumentSans(
-                        color: Colors.white,
-                        fontSize: 10,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ),
+                  width: 16, height: 16,
+                  decoration: const ShapeDecoration(gradient: LinearGradient(begin: Alignment(0.50, 0.00), end: Alignment(0.50, 1.00), colors: [Color(0xFF4ADEDE), Color(0xFFA3E42F)]), shape: OvalBorder(side: BorderSide(width: 1.16, color: Colors.white))),
+                  child: Center(child: Text('!', style: GoogleFonts.instrumentSans(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600))),
                 ),
               ),
             ],
@@ -287,108 +223,66 @@ class _DashboardScreenState extends State<DashboardScreen> {
     );
   }
 
+  // --- WIDGET PROFILE HEADER (UPDATED UNTUK MENAMPILKAN FOTO) ---
   Widget _buildProfileHeader() {
     return InkWell(
       borderRadius: BorderRadius.circular(24),
-      onTap: () {
-        Navigator.of(context).push(
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) =>
-                const ProfileScreen(),
-            transitionsBuilder:
-                (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-          ),
-        ).then((_) => _loadUserData());
-      },
+      onTap: _goToProfile, // Panggil fungsi navigasi untuk refresh saat kembali
       child: Container(
         width: double.infinity,
         padding: const EdgeInsets.all(17),
         decoration: ShapeDecoration(
           color: const Color(0xB2FFFFFF),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1.16, color: Color(0xCCFFFFFF)),
-            borderRadius: BorderRadius.circular(24),
-          ),
-          shadows: const [
-            BoxShadow(
-              color: Color(0x0C000000),
-              blurRadius: 6,
-              offset: Offset(0, 4),
-              spreadRadius: 0,
-            )
-          ],
+          shape: RoundedRectangleBorder(side: const BorderSide(width: 1.16, color: Color(0xCCFFFFFF)), borderRadius: BorderRadius.circular(24)),
+          shadows: const [BoxShadow(color: Color(0x0C000000), blurRadius: 6, offset: Offset(0, 4), spreadRadius: 0)],
         ),
         child: Row(
           children: [
+            // CONTAINER FOTO PROFIL
             Container(
               width: 64,
               height: 64,
               decoration: ShapeDecoration(
                 color: const Color(0xFFE0EBF0),
-                shape: RoundedRectangleBorder(
-                  side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)),
-                  borderRadius: BorderRadius.circular(16),
-                ),
+                shape: RoundedRectangleBorder(side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)), borderRadius: BorderRadius.circular(16)),
               ),
-              child: const Icon(
-                Icons.person_outline,
-                size: 40,
-                color: Color(0x99192D34),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                // Logika Tampilan Foto
+                child: _photoProfilePath != null && _photoProfilePath!.isNotEmpty
+                    ? Image.file(
+                  File(_photoProfilePath!), // Tampilkan Foto dari File Lokal
+                  fit: BoxFit.cover,
+                  errorBuilder: (context, error, stackTrace) {
+                    // Jika file rusak/tidak ditemukan, tampilkan icon default
+                    return const Icon(Icons.person_outline, size: 40, color: Color(0x99192D34));
+                  },
+                )
+                    : const Icon(Icons.person_outline, size: 40, color: Color(0x99192D34)),
               ),
             ),
+            // ------------------------------------------------------
+
             const SizedBox(width: 16),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  _displayName,
-                  style: GoogleFonts.instrumentSans(
-                    color: const Color(0xFF1A2E35),
-                    fontSize: 18,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text(_displayName, style: GoogleFonts.instrumentSans(color: const Color(0xFF1A2E35), fontSize: 18, fontWeight: FontWeight.w500)),
                 const SizedBox(height: 4),
                 Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                   decoration: ShapeDecoration(
-                    gradient: const LinearGradient(
-                      begin: Alignment(0.50, 0.00),
-                      end: Alignment(0.50, 1.00),
-                      colors: [Color(0x334ADEDE), Color(0x33A3E42F)],
-                    ),
-                    shape: RoundedRectangleBorder(
-                      side: const BorderSide(
-                          width: 1.16, color: Color(0x4C4ADEDE)),
-                      borderRadius: BorderRadius.circular(38835400),
-                    ),
+                    gradient: const LinearGradient(begin: Alignment(0.50, 0.00), end: Alignment(0.50, 1.00), colors: [Color(0x334ADEDE), Color(0x33A3E42F)]),
+                    shape: RoundedRectangleBorder(side: const BorderSide(width: 1.16, color: Color(0x4C4ADEDE)), borderRadius: BorderRadius.circular(38835400)),
                   ),
-                  child: Text(
-                    _role,
-                    style: GoogleFonts.instrumentSans(
-                      color: const Color(0xFF1A2E35),
-                      fontSize: 12,
-                    ),
-                  ),
+                  child: Text(_role, style: GoogleFonts.instrumentSans(color: const Color(0xFF1A2E35), fontSize: 12)),
                 ),
                 const SizedBox(height: 6),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined,
-                        color: Color(0x99192D34), size: 14),
-                    const SizedBox(width: 4),
-                    Text(
-                      'Gunungpati, Kota Semarang',
-                      style: GoogleFonts.instrumentSans(
-                        color: const Color(0x99192D34),
-                        fontSize: 12,
-                      ),
-                    ),
-                  ],
-                ),
+                Row(children: [
+                  const Icon(Icons.location_on_outlined, color: Color(0x99192D34), size: 14),
+                  const SizedBox(width: 4),
+                  Text('Gunungpati, Kota Semarang', style: GoogleFonts.instrumentSans(color: const Color(0x99192D34), fontSize: 12)),
+                ]),
               ],
             ),
           ],
@@ -401,64 +295,26 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Tombol Darurat',
-          style: GoogleFonts.instrumentSans(
-            color: const Color(0xFF1A2E35),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text('Tombol Darurat', style: GoogleFonts.instrumentSans(color: const Color(0xFF1A2E35), fontSize: 16, fontWeight: FontWeight.w500)),
         const SizedBox(height: 12),
         GestureDetector(
           onTap: () {
             HapticFeedback.lightImpact();
-            SOSService.instance.sendSOS(
-              context: context,
-            );
+            SOSService.instance.sendSOS(context: context);
           },
           child: Container(
-            width: double.infinity,
-            height: 100,
+            width: double.infinity, height: 100,
             decoration: ShapeDecoration(
               color: const Color(0xFFE7000B),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
-              ),
-              shadows: const [
-                BoxShadow(
-                  color: Color(0x4C4ADEDE),
-                  blurRadius: 12,
-                  offset: Offset(0, 6),
-                  spreadRadius: -2,
-                )
-              ],
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+              shadows: const [BoxShadow(color: Color(0x4C4ADEDE), blurRadius: 12, offset: Offset(0, 6), spreadRadius: -2)],
             ),
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                Container(
-                  width: 40,
-                  height: 40,
-                  decoration: ShapeDecoration(
-                    color: const Color(0x33FFFFFF),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: const Icon(Icons.sos_rounded,
-                      color: Colors.white, size: 24),
-                ),
+                Container(width: 40, height: 40, decoration: ShapeDecoration(color: const Color(0x33FFFFFF), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: const Icon(Icons.sos_rounded, color: Colors.white, size: 24)),
                 const SizedBox(height: 8),
-                Text(
-                  'Laporkan Keadaan Darurat!',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.instrumentSans(
-                    color: Colors.white,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
+                Text('Laporkan Keadaan Darurat!', textAlign: TextAlign.center, style: GoogleFonts.instrumentSans(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w500)),
               ],
             ),
           ),
@@ -470,32 +326,13 @@ class _DashboardScreenState extends State<DashboardScreen> {
   Widget _buildWarningSection() {
     return Column(
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              'Peringatan',
-              style: GoogleFonts.instrumentSans(
-                color: const Color(0xFF1A2E35),
-                fontSize: 16,
-                fontWeight: FontWeight.w500,
-              ),
-            ),
-            Text(
-              '${_reports.length} Laporan',
-              style: GoogleFonts.instrumentSans(
-                color: const Color(0x99192D34),
-                fontSize: 12,
-              ),
-            ),
-          ],
-        ),
+        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+          Text('Peringatan', style: GoogleFonts.instrumentSans(color: const Color(0xFF1A2E35), fontSize: 16, fontWeight: FontWeight.w500)),
+          Text('${_reports.length} Laporan', style: GoogleFonts.instrumentSans(color: const Color(0x99192D34), fontSize: 12)),
+        ]),
         const SizedBox(height: 12),
         if (_loadingReports)
-          const Padding(
-            padding: EdgeInsets.symmetric(vertical: 32),
-            child: Center(child: CircularProgressIndicator()),
-          )
+          const Padding(padding: EdgeInsets.symmetric(vertical: 32), child: Center(child: CircularProgressIndicator()))
         else if (_reports.isEmpty)
           _buildEmptyWarningCard()
         else
@@ -514,35 +351,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
 
   Widget _buildEmptyWarningCard() {
     return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.all(17),
-      decoration: ShapeDecoration(
-        color: const Color(0xB2FFFFFF),
-        shape: RoundedRectangleBorder(
-          side: const BorderSide(width: 1.16, color: Color(0x4CFFB400)),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-            spreadRadius: 0,
-          )
-        ],
-      ),
-      child: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Text(
-            "Tidak ada peringatan terkini",
-            style: GoogleFonts.instrumentSans(
-              color: const Color(0xB2192D34),
-              fontSize: 14,
-            ),
-          ),
-        ),
-      ),
+      width: double.infinity, padding: const EdgeInsets.all(17),
+      decoration: ShapeDecoration(color: const Color(0xB2FFFFFF), shape: RoundedRectangleBorder(side: const BorderSide(width: 1.16, color: Color(0x4CFFB400)), borderRadius: BorderRadius.circular(16)), shadows: const [BoxShadow(color: Color(0x0C000000), blurRadius: 4, offset: Offset(0, 2), spreadRadius: 0)]),
+      child: Center(child: Padding(padding: const EdgeInsets.all(20.0), child: Text("Tidak ada peringatan terkini", style: GoogleFonts.instrumentSans(color: const Color(0xB2192D34), fontSize: 14)))),
     );
   }
 
@@ -551,103 +362,22 @@ class _DashboardScreenState extends State<DashboardScreen> {
       padding: const EdgeInsets.all(17),
       decoration: ShapeDecoration(
         color: const Color(0xB2FFFFFF),
-        shape: RoundedRectangleBorder(
-          side: BorderSide(
-            width: 1.16,
-            color: report.type == 'SOS'
-                ? const Color(0xFFE7000B)
-                : const Color(0x4C4ADEDE),
-          ),
-          borderRadius: BorderRadius.circular(16),
-        ),
-        shadows: const [
-          BoxShadow(
-            color: Color(0x0C000000),
-            blurRadius: 4,
-            offset: Offset(0, 2),
-            spreadRadius: 0,
-          )
-        ],
+        shape: RoundedRectangleBorder(side: BorderSide(width: 1.16, color: report.type == 'SOS' ? const Color(0xFFE7000B) : const Color(0x4C4ADEDE)), borderRadius: BorderRadius.circular(16)),
+        shadows: const [BoxShadow(color: Color(0x0C000000), blurRadius: 4, offset: Offset(0, 2), spreadRadius: 0)],
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 40,
-            height: 40,
-            decoration: ShapeDecoration(
-              color: report.type == 'SOS'
-                  ? const Color(0x19E7000B)
-                  : const Color(0x33A3E42F),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(14),
-              ),
-            ),
-            child: Icon(
-              report.jenis == 'SOS'
-                  ? Icons.sos_rounded
-                  : Icons.warning_amber_rounded,
-              color: const Color(0xFF1A2E35),
-              size: 20,
-            ),
-          ),
+          Container(width: 40, height: 40, decoration: ShapeDecoration(color: report.type == 'SOS' ? const Color(0x19E7000B) : const Color(0x33A3E42F), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Icon(report.jenis == 'SOS' ? Icons.sos_rounded : Icons.warning_amber_rounded, color: const Color(0xFF1A2E35), size: 20)),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      report.reportType ?? report.type,
-                      style: GoogleFonts.instrumentSans(
-                        color: const Color(0xFF1A2E35),
-                        fontSize: 14,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                    Text(
-                      _formatTime(report.createdAt),
-                      style: GoogleFonts.instrumentSans(
-                        color: const Color(0x99192D34),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  report.description,
-                  style: GoogleFonts.instrumentSans(
-                    color: const Color(0xB2192D34),
-                    fontSize: 12,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Row(
-                  children: [
-                    const Icon(Icons.location_on_outlined,
-                        color: Color(0x99192D34), size: 12),
-                    const SizedBox(width: 4),
-                    // Perbaikan Overflow
-                    Expanded(
-                      child: Text(
-                        report.lat != null && report.lng != null
-                            ? '${report.lat}, ${report.lng}'
-                            : 'Lokasi tidak disebutkan',
-                        style: GoogleFonts.instrumentSans(
-                          color: const Color(0x99192D34),
-                          fontSize: 11,
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Text(report.reportType ?? report.type, style: GoogleFonts.instrumentSans(color: const Color(0xFF1A2E35), fontSize: 14, fontWeight: FontWeight.w500)), Text(_formatTime(report.createdAt), style: GoogleFonts.instrumentSans(color: const Color(0x99192D34), fontSize: 11))]),
+              const SizedBox(height: 4),
+              Text(report.description, style: GoogleFonts.instrumentSans(color: const Color(0xB2192D34), fontSize: 12)),
+              const SizedBox(height: 8),
+              Row(children: [const Icon(Icons.location_on_outlined, color: Color(0x99192D34), size: 12), const SizedBox(width: 4), Expanded(child: Text(report.lat != null && report.lng != null ? '${report.lat}, ${report.lng}' : 'Lokasi tidak disebutkan', style: GoogleFonts.instrumentSans(color: const Color(0x99192D34), fontSize: 11), maxLines: 1, overflow: TextOverflow.ellipsis))]),
+            ]),
           ),
         ],
       ),
@@ -658,301 +388,41 @@ class _DashboardScreenState extends State<DashboardScreen> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Menu',
-          style: GoogleFonts.instrumentSans(
-            color: const Color(0xFF1A2E35),
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
+        Text('Menu', style: GoogleFonts.instrumentSans(color: const Color(0xFF1A2E35), fontSize: 16, fontWeight: FontWeight.w500)),
         const SizedBox(height: 12),
-        _buildMenuCard(
-          title: 'Pengaturan',
-          icon: Icons.settings_outlined,
-          iconBgColor: const Color(0x334ADEDE),
-          color: const Color(0xFF1A2E35),
-          onTap: () {
-            HapticFeedback.lightImpact();
-            Navigator.of(context).push(
-              MaterialPageRoute(
-                builder: (_) => const SettingsScreen(),
-              ),
-            );
-          },
-        ),
+        _buildMenuCard(title: 'Pengaturan', icon: Icons.settings_outlined, iconBgColor: const Color(0x334ADEDE), color: const Color(0xFF1A2E35), onTap: () { HapticFeedback.lightImpact(); Navigator.of(context).push(MaterialPageRoute(builder: (_) => const SettingsScreen())); }),
         const SizedBox(height: 8),
-        _buildMenuCard(
-          title: 'Keluar',
-          icon: Icons.logout_outlined,
-          iconBgColor: const Color(0x33FF6464),
-          color: const Color(0xFFE7000B),
-          onTap: () async {
-            HapticFeedback.lightImpact();
-            // Logout dari AuthService
-            await AuthService.instance.signOut();
-
-            if (!mounted) return;
-
-            // Navigasi balik ke Splash/SignIn
-            Navigator.of(context).pushAndRemoveUntil(
-              MaterialPageRoute(
-                builder: (_) => const SplashScreen(),
-              ),
-                  (route) => false,
-            );
-          },
-        ),
+        _buildMenuCard(title: 'Keluar', icon: Icons.logout_outlined, iconBgColor: const Color(0x33FF6464), color: const Color(0xFFE7000B), onTap: () async { HapticFeedback.lightImpact(); await AuthService.instance.signOut(); if (!mounted) return; Navigator.of(context).pushAndRemoveUntil(MaterialPageRoute(builder: (_) => const SplashScreen()), (route) => false); }),
       ],
     );
   }
 
-  Widget _buildMenuCard({
-    required String title,
-    required IconData icon,
-    required Color iconBgColor,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(16),
-      child: Ink(
-        width: double.infinity,
-        padding: const EdgeInsets.all(17),
-        decoration: ShapeDecoration(
-          color: const Color(0x99FFFFFF),
-          shape: RoundedRectangleBorder(
-            side: const BorderSide(width: 1.16, color: Color(0x264ADEDE)),
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              children: [
-                Container(
-                  width: 36,
-                  height: 36,
-                  decoration: ShapeDecoration(
-                    color: iconBgColor,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                  ),
-                  child: Icon(icon, color: color, size: 20),
-                ),
-                const SizedBox(width: 12),
-                Text(
-                  title,
-                  style: GoogleFonts.instrumentSans(
-                    color: color,
-                    fontSize: 14,
-                  ),
-                ),
-              ],
-            ),
-            const Icon(Icons.arrow_forward_ios_rounded,
-                color: Color(0xFF1A2E35), size: 16),
-          ],
-        ),
-      ),
-    );
+  Widget _buildMenuCard({required String title, required IconData icon, required Color iconBgColor, required Color color, required VoidCallback onTap}) {
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(16), child: Ink(width: double.infinity, padding: const EdgeInsets.all(17), decoration: ShapeDecoration(color: const Color(0x99FFFFFF), shape: RoundedRectangleBorder(side: const BorderSide(width: 1.16, color: Color(0x264ADEDE)), borderRadius: BorderRadius.circular(16))), child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [Row(children: [Container(width: 36, height: 36, decoration: ShapeDecoration(color: iconBgColor, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: Icon(icon, color: color, size: 20)), const SizedBox(width: 12), Text(title, style: GoogleFonts.instrumentSans(color: color, fontSize: 14))]), const Icon(Icons.arrow_forward_ios_rounded, color: Color(0xFF1A2E35), size: 16)])));
   }
 
   Widget _buildBottomNav() {
     const int activeIndex = 1;
-
     return Container(
-      width: double.infinity,
-      height: 90,
-      decoration: const BoxDecoration(
-        color: Color(0xCCFFFFFF),
-        border: Border(
-          top: BorderSide(width: 1.16, color: Color(0x334ADEDE)),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Color(0x14000000),
-            blurRadius: 12,
-            offset: Offset(0, -4),
-            spreadRadius: 0,
-          )
-        ],
-      ),
-      child: LayoutBuilder(
-        builder: (context, constraints) {
-          final double slotWidth = constraints.maxWidth / 3;
-
-          IconData activeIcon;
-          switch (activeIndex) {
-            case 0:
-              activeIcon = Icons.forum_outlined;
-              break;
-            case 1:
-              activeIcon = Icons.grid_view_outlined;
-              break;
-            case 2:
-              activeIcon = Icons.assignment_outlined;
-              break;
-            default:
-              activeIcon = Icons.grid_view_outlined;
-          }
-
-          return Stack(
-            clipBehavior: Clip.none,
-            children: [
-              Row(
-                children: [
-                  SizedBox(
-                    width: slotWidth,
-                    child: _buildBottomNavItem(
-                      icon: Icons.forum_outlined,
-                      label: 'Forum',
-                      isActive: activeIndex == 0,
-                      onTap: () {
-                        if (activeIndex == 0) return;
-                        Navigator.of(context).pushReplacement(
-                          PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                            const ForumScreen(),
-                            transitionsBuilder: (context, animation,
-                                secondaryAnimation, child) {
-                              return FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                  SizedBox(
-                    width: slotWidth,
-                    child: _buildBottomNavItem(
-                      icon: Icons.grid_view_outlined,
-                      label: 'Dashboard',
-                      isActive: activeIndex == 1,
-                      onTap: () {
-                        // Already here
-                      },
-                    ),
-                  ),
-                  SizedBox(
-                    width: slotWidth,
-                    child: _buildBottomNavItem(
-                      icon: Icons.assignment_outlined,
-                      label: 'Laporan',
-                      isActive: activeIndex == 2,
-                      onTap: () {
-                        if (activeIndex == 2) return;
-                        Navigator.of(context).pushReplacement(
-                          PageRouteBuilder(
-                            pageBuilder:
-                                (context, animation, secondaryAnimation) =>
-                            const ReportScreen(),
-                            transitionsBuilder: (context, animation,
-                                secondaryAnimation, child) {
-                              return FadeTransition(
-                                opacity: animation,
-                                child: child,
-                              );
-                            },
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-
-              Positioned(
-                top: -25,
-                left: slotWidth * activeIndex + slotWidth / 2 - 30,
-                child: Container(
-                  width: 60,
-                  height: 60,
-                  decoration: const ShapeDecoration(
-                    color: Color(0xCCFFFFFF),
-                    shape: CircleBorder(),
-                    shadows: [
-                      BoxShadow(
-                        color: Color(0x19000000),
-                        blurRadius: 15,
-                        offset: Offset(0, 10),
-                        spreadRadius: -3,
-                      )
-                    ],
-                  ),
-                  child: Container(
-                    margin: const EdgeInsets.all(5),
-                    decoration: const ShapeDecoration(
-                      color: Color(0x89A3E42F),
-                      shape: CircleBorder(),
-                    ),
-                    child: Icon(
-                      activeIcon,
-                      color: const Color(0xFF1A2E35),
-                    ),
-                  ),
-                ),
-              ),
-            ],
-          );
-        },
-      ),
+      width: double.infinity, height: 90,
+      decoration: const BoxDecoration(color: Color(0xCCFFFFFF), border: Border(top: BorderSide(width: 1.16, color: Color(0x334ADEDE))), boxShadow: [BoxShadow(color: Color(0x14000000), blurRadius: 12, offset: Offset(0, -4), spreadRadius: 0)]),
+      child: LayoutBuilder(builder: (context, constraints) {
+        final double slotWidth = constraints.maxWidth / 3;
+        IconData activeIcon = Icons.grid_view_outlined; // Default dashboard
+        return Stack(clipBehavior: Clip.none, children: [
+          Row(children: [
+            SizedBox(width: slotWidth, child: _buildBottomNavItem(icon: Icons.forum_outlined, label: 'Forum', isActive: false, onTap: () { Navigator.of(context).pushReplacement(PageRouteBuilder(pageBuilder: (_,__,___) => const ForumScreen(), transitionsBuilder: (_,a,__,c) => FadeTransition(opacity: a, child: c))); })),
+            SizedBox(width: slotWidth, child: _buildBottomNavItem(icon: Icons.grid_view_outlined, label: 'Dashboard', isActive: true, onTap: () {})),
+            SizedBox(width: slotWidth, child: _buildBottomNavItem(icon: Icons.assignment_outlined, label: 'Laporan', isActive: false, onTap: () { Navigator.of(context).pushReplacement(PageRouteBuilder(pageBuilder: (_,__,___) => const ReportScreen(), transitionsBuilder: (_,a,__,c) => FadeTransition(opacity: a, child: c))); })),
+          ]),
+          Positioned(top: -25, left: slotWidth * activeIndex + slotWidth / 2 - 30, child: Container(width: 60, height: 60, decoration: const ShapeDecoration(color: Color(0xCCFFFFFF), shape: CircleBorder(), shadows: [BoxShadow(color: Color(0x19000000), blurRadius: 15, offset: Offset(0, 10), spreadRadius: -3)]), child: Container(margin: const EdgeInsets.all(5), decoration: const ShapeDecoration(color: Color(0x89A3E42F), shape: CircleBorder()), child: Icon(activeIcon, color: const Color(0xFF1A2E35))))),
+        ]);
+      }),
     );
   }
 
-  Widget _buildBottomNavItem({
-    required IconData icon,
-    required String label,
-    required bool isActive,
-    required VoidCallback onTap,
-  }) {
-    final Color color =
-    isActive ? const Color(0xFF1A2E35) : const Color(0x7F192D34);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(14),
-      child: Container(
-        padding: const EdgeInsets.only(top: 12.0),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              width: 40,
-              height: 40,
-              decoration: ShapeDecoration(
-                color:
-                isActive ? const Color(0x11A3E42F) : Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
-                ),
-              ),
-              child: isActive
-                  ? const SizedBox.shrink()
-                  : Icon(icon, color: color, size: 24),
-            ),
-            const SizedBox(height: 4),
-            if (!isActive)
-              Text(
-                label,
-                style: GoogleFonts.instrumentSans(
-                  color: color,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w400,
-                ),
-              )
-            else
-              const SizedBox(height: 0),
-          ],
-        ),
-      ),
-    );
+  Widget _buildBottomNavItem({required IconData icon, required String label, required bool isActive, required VoidCallback onTap}) {
+    final Color color = isActive ? const Color(0xFF1A2E35) : const Color(0x7F192D34);
+    return InkWell(onTap: onTap, borderRadius: BorderRadius.circular(14), child: Container(padding: const EdgeInsets.only(top: 12.0), child: Column(mainAxisSize: MainAxisSize.min, children: [Container(width: 40, height: 40, decoration: ShapeDecoration(color: isActive ? const Color(0x11A3E42F) : Colors.transparent, shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14))), child: isActive ? const SizedBox.shrink() : Icon(icon, color: color, size: 24)), const SizedBox(height: 4), if (!isActive) Text(label, style: GoogleFonts.instrumentSans(color: color, fontSize: 11, fontWeight: FontWeight.w400)) else const SizedBox(height: 0)])));
   }
 }
