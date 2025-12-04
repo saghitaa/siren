@@ -2,40 +2,79 @@ import '../models/forum_post_model.dart';
 import 'database_service.dart';
 import 'auth_service.dart';
 
-/// Service untuk operasi forum (SQLite Version).
 class ForumService {
   ForumService._internal();
   static final ForumService instance = ForumService._internal();
 
-  /// Membuat posting baru di forum.
-  Future<int> createPost({
+  // Mengambil data dari SQLite (sekarang butuh ID user untuk cek status like)
+  Future<List<ForumPost>> getAllPosts() async {
+    // Pastikan database siap
+    await DatabaseService.instance.init();
+
+    // Ambil User ID yang sedang login agar tahu postingan mana yang sudah di-like
+    final user = AuthService.instance.currentUser;
+    final userId = user?.id ?? 'guest';
+
+    return await DatabaseService.instance.getAllForumPosts(userId);
+  }
+
+  // Membuat Postingan Baru (Gambar/Video + Text)
+  Future<void> createPost({
     required String content,
     required String name,
-    required String role, // 'Warga' atau 'Responder'
+    required String role,
+    String? attachmentPath,
+    String? attachmentType,
   }) async {
-    final userId = AuthService.instance.currentUser?.id ?? 'unknown';
+    await DatabaseService.instance.init();
+    final user = AuthService.instance.currentUser;
 
-    final post = ForumPost(
-      userId: userId,
+    final newPost = ForumPost(
+      // Gunakan ID user asli, jika null gunakan 'guest'
+      userId: user?.id ?? 'guest',
       name: name,
       role: role,
       content: content,
-      repliesCount: 0,
       createdAt: DateTime.now(),
+      repliesCount: 0,
+      attachmentPath: attachmentPath,
+      attachmentType: attachmentType,
     );
 
-    return await DatabaseService.instance.insertForumPost(post);
+    await DatabaseService.instance.insertForumPost(newPost);
   }
 
-  /// Get semua posting forum (Future, bukan Stream).
-  Future<List<ForumPost>> getAllPosts() async {
-    return await DatabaseService.instance.getAllForumPosts();
+  // --- FITUR LIKE (BARU) ---
+  Future<void> toggleLike(String postId) async {
+    await DatabaseService.instance.init();
+    final user = AuthService.instance.currentUser;
+
+    // User harus login untuk like
+    if (user == null) return;
+
+    await DatabaseService.instance.toggleLike(int.parse(postId), user.id);
   }
 
-  /// Menambah reply ke posting (Simulasi).
-  Future<void> createReply(String postId, String replyContent) async {
-    // TODO: Implementasi tabel 'replies' di SQLite
-    // Untuk sekarang update jumlah balasan saja di mock/UI
-    print('Reply to post $postId: $replyContent');
+  // --- FITUR REPLY / KOMENTAR (BARU) ---
+  Future<void> sendReply(String postId, String content) async {
+    await DatabaseService.instance.init();
+    final user = AuthService.instance.currentUser;
+
+    // User harus login untuk komentar
+    if (user == null) return;
+
+    await DatabaseService.instance.addReply(
+        int.parse(postId),
+        user.id,
+        user.displayName,
+        user.role,
+        content
+    );
+  }
+
+  // Mengambil daftar komentar untuk sebuah postingan
+  Future<List<Map<String, dynamic>>> getPostReplies(String postId) async {
+    await DatabaseService.instance.init();
+    return await DatabaseService.instance.getReplies(int.parse(postId));
   }
 }

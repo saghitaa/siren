@@ -16,8 +16,10 @@ dependencies:
   # === Mobile utilities ===
   audioplayers: ^5.2.1
   url_launcher: ^6.3.0
+  image_picker: ^1.0.7
   sqflite: ^2.3.0
   path_provider: ^2.1.0
+  video_player: ^2.8.1
 
   # Dependencies untuk koordinat di laporan
   geolocator: ^10.1.0
