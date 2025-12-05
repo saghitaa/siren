@@ -22,7 +22,7 @@ class DatabaseService {
     
     // GANTI NAMA DB KE V4 UNTUK MEMAKSA RESET STRUKTUR DB
     // Ini akan membuat file database baru dengan struktur tabel terbaru (ada kolom status & tabel messages)
-    final dbPath = p.join(docsDir.path, 'siren_app_v4.db');
+    final dbPath = p.join(docsDir.path, 'siren_app_v5.db');
 
     _db = await openDatabase(
       dbPath,
@@ -266,5 +266,7 @@ class DatabaseService {
     await db.insert('users', {'nama': 'Warga Demo', 'email': 'warga@siren.id', 'password': 'password', 'no_hp': '08123456789', 'peran': 'warga', 'kontak_darurat': '08111111111,08222222222', 'foto_profil': null, 'dibuat_pada': now.millisecondsSinceEpoch, 'status': 'Offline'});
     await db.insert('users', {'nama': 'Petugas Polisi', 'email': 'polisi@siren.id', 'password': 'password', 'no_hp': '110', 'peran': 'polisi', 'kontak_darurat': '', 'foto_profil': null, 'dibuat_pada': now.millisecondsSinceEpoch, 'status': 'Online'});
     await db.insert('users', {'nama': 'Petugas Medis', 'email': 'medis@siren.id', 'password': 'password', 'no_hp': '119', 'peran': 'tenaga kesehatan', 'kontak_darurat': '', 'foto_profil': null, 'dibuat_pada': now.millisecondsSinceEpoch, 'status': 'Online'});
+    // Tambahan user petugas sesuai request user
+    await db.insert('users', {'nama': 'Petugas Umum', 'email': 'petugas@siren.id', 'password': 'password', 'no_hp': '112', 'peran': 'petugas', 'kontak_darurat': '', 'foto_profil': null, 'dibuat_pada': now.millisecondsSinceEpoch, 'status': 'Online'});
   }
 }
